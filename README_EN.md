@@ -1,17 +1,15 @@
-# 🤖 ModelScope Prism v1.0
-
-<div align="center">
-
-![ModelScope Prism](public/logo.webp)
-
-**Deep Thinking & Creative Inspiration — Your ModelScope AI Exploration Space**
-
 [中文](./README.md)
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Next.js](https://img.shields.io/badge/built%20with-Next.js-black)
-![ModelScope](https://img.shields.io/badge/powered%20by-ModelScope-purple)
+<div align="center">
+  <img src="public/logo.webp" alt="ModelScope Prism" width="120" />
 
+  # ModelScope Prism
+
+  **Chat · Vision · Art — Your All-in-One ModelScope Exploration Space**
+
+  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+  ![Next.js](https://img.shields.io/badge/built%20with-Next.js-black)
+  ![ModelScope](https://img.shields.io/badge/powered%20by-ModelScope-purple)
 </div>
 
 ---
@@ -90,10 +88,10 @@ If you wish to run locally or contribute, follow these steps.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-username/modelscope-studio.git
+git clone https://github.com/your-username/modelscope-prism.git
 
 # 2. Enter directory
-cd modelscope-studio
+cd modelscope-prism
 
 # 3. Install dependencies
 npm install
