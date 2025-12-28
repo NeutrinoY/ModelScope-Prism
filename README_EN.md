@@ -1,47 +1,46 @@
-[中文](./README.md)
-
 <div align="center">
-  <img src="public/logo.webp" alt="ModelScope Prism" width="120" />
+  <img src="public/logo.webp" alt="ModelScope Prism" width="150" />
 
   # ModelScope Prism
 
-  **Chat · Vision · Art — Your All-in-One ModelScope Exploration Space**
+  **Blending Conversation, Vision, and Creativity into One ModelScope Exploration Space**
 
-  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-  ![Next.js](https://img.shields.io/badge/built%20with-Next.js-black)
-  ![ModelScope](https://img.shields.io/badge/powered%20by-ModelScope-purple)
-</div>
+    **[中文](./README.md) | English**
+
+  </div>
+
+  
+
+  ---
+
+**ModelScope Prism** is an open-source AI web application built with Next.js. As a modern frontend interface for ModelScope API services, it integrates three core capabilities: **LLM Chat**, **VLM Visual Recognition**, and **AIGC Image Generation**. It provides a smooth, beautiful, and powerful AI experience without the need for complex backend deployment.
+
+### ✨ Core Highlights
+
+- **🧠 Deep Thinking Mode**: Perfectly supports advanced models like **DeepSeek V3.2**, **Qwen3**, and **GLM-4.7**. Enable it to natively display the **Chain of Thought (CoT)**, making the AI's reasoning process visible.
+- **🎨 AIGC Canvas**: More than just image generation—supports **LoRA Model Loading**, **CFG/Steps Fine-tuning**, **Custom Resolutions**, and an **Immersive Image Gallery**.
+- **👀 Multimodal Vision**: Supports visual models like **Qwen3-VL**, allowing you to upload images for in-depth Q&A and analysis.
+- **🔒 Data Privacy & Security**: Adheres to the **Local-First** principle. All chat history, Access Tokens, and settings are stored locally in your **browser (Local Storage)**. No data is uploaded to third-party servers other than direct calls to the ModelScope API.
+- **📱 Responsive Design**: Optimized for the best interactive experience, whether on a 4K large monitor or a mobile device.
 
 ---
 
-**ModelScope Prism** is a modern AI client built with Next.js, designed specifically for the powerful API services of ModelScope community. It integrates three core capabilities: **LLM Deep Chat**, **VLM Visual Understanding**, and **AIGC Professional Image Generation**, providing you with a smooth, beautiful, and powerful AI experience.
+### 🚀 Quick Start
 
-### ✨ Key Highlights
-
-- **🧠 Deep Thinking Mode**: Perfectly supports **DeepSeek-R1**, **Qwen3**, **GLM-4.7**, and other advanced models. Enable reasoning to visualize the Chain of Thought (CoT) and see exactly how the AI solves problems.
-- **🎨 Professional AIGC Canvas**: Not just image generation—supports **LoRA model loading**, **CFG/Steps fine-tuning**, **custom resolutions**, and an immersive image gallery.
-- **👀 Multimodal Vision**: Supports **Qwen3-VL** and other vision models, allowing you to upload images for in-depth analysis and Q&A.
-- **🔒 Privacy First**: All chat history, API Keys, and settings are stored **locally in your browser (Local Storage)**. No data is sent to third-party servers (other than the direct ModelScope API calls).
-- **📱 Responsive Design**: Optimized for the best visual experience on everything from 4K large monitors to mobile devices.
-
----
-
-### 🚀 Quick Start (For Users)
-
-#### 1. Get API Key
-This project relies on ModelScope's free/paid API services.
-1. Log in and visit [ModelScope My Access Token](https://modelscope.cn/my/myaccesstoken).
+#### 1. Get Access Token
+This project relies on the Serverless Inference API provided by ModelScope.
+1. Log in and visit [ModelScope Access Token](https://modelscope.cn/my/myaccesstoken).
 2. Copy your Access Token.
 
-#### 2. Configure Workstation
+#### 2. Configure ModelScope Prism
 1. Open the deployed website (or visit `http://localhost:3000` after starting locally).
 2. Click the **Settings Icon** ⚙️ on the **Dock** at the bottom of the page.
-3. Paste your Access Token into the **API Key** field and save.
+3. Paste your Access Token into the **ModelScope Access Token** field and save.
 
 #### 3. Start Creating!
-*   **💬 Chat**: Switch to the **LLM Module**. Built-in models (DeepSeek, Qwen, GLM, etc.) allow you to toggle **"Reasoning"** directly from the top navigation bar to experience deep thinking.
+*   **💬 Chat**: Switch to the **LLM Module**. Built-in models (DeepSeek, Qwen, GLM, etc.) allow you to toggle **"Reasoning"** from the top navigation bar to experience deep thinking.
 *   **👁️ Vision**: Switch to the **VLM Module**. Upload or paste an image to recognize objects, extract text, or chat about the scene.
-*   **🎨 Image**: Switch to the **AIGC Module**. Enter your prompt and adjust parameters to generate stunning visuals.
+*   **🎨 Image**: Switch to the **AIGC Module**. Enter a prompt, adjust parameters, and generate high-quality images.
 
 #### ⚠️ Important: Data Safety & Backup
 All your chat history and generated image links are **saved in your current browser**.
@@ -53,26 +52,33 @@ All your chat history and generated image links are **saved in your current brow
 ### 🧩 Module Details
 
 #### 💬 LLM Deep Chat
-*   **Built-in Models**: We have preset popular series like Qwen, DeepSeek, and GLM in the top bar. Click the model name to switch instantly.
-*   **Custom Models**: Supports manual input of any ModelScope Model ID (Custom mode).
+*   **Built-in Models**: Popular series like Qwen, DeepSeek, and GLM are preset in the top bar. Click the name to switch instantly.
+*   **Custom Models**: Supports manual input of any text generation model ID from ModelScope.
+    *   👉 [Find more Text Generation Models](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:text-generation&type=tasks)
 *   **Thinking Process**:
-    *   **For Built-in Models**: Toggle the **"Reasoning"** badge under the model name in the top bar.
-    *   **For Custom Models**: Please click the Settings icon ⚙️ at the bottom and check `Enable Thinking Process` in the global settings.
-    *   *Note: The reasoning process is displayed elegantly in a collapsible/quoted format.*
+    *   **Built-in Models**: Click the **"Reasoning"** tag under the model name in the top bar to toggle on/off.
+    *   **Custom Models**: Click the settings icon ⚙️ at the bottom and check `Enable Thinking Process` in global settings.
+    *   *Note: The thinking process is displayed elegantly in a collapsible/quoted format, supporting click-to-expand.*
 
 #### 👁️ VLM Visual Understanding
-*   **Image Chat**: Upload an image and ask "What's in this picture?" or "Extract text from here".
-*   **Multi-turn**: Supports continuous conversation based on the image context.
-*   **Model Support**: Defaults to the Qwen-VL series, known for powerful OCR and scene understanding.
+*   **Image Chat**: Upload an image and ask "What is in the picture?" or "Extract text from the image".
+*   **Custom Models**: Besides the built-in Qwen-VL, you can try other multimodal models supporting OpenAI format.
+    *   👉 [Find more Image-to-Text Models](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:image-text-to-text&type=tasks)
 
 #### 🎨 AIGC Creative Canvas
-Beyond basic prompts, we provide a professional control panel (click the sliders icon inside the input box):
-*   **Aspect Ratio / Size**: Presets for common resolutions (e.g., 1024x1024, 720x1280) and supports **Custom** width/height.
-*   **Negative Prompt**: Tell the AI what you do **NOT** want to see (e.g., "blurry, ugly, low quality").
-*   **Steps**: The number of iterations for image generation. Higher values yield more details but take longer (Recommended: **20-30**).
-*   **CFG (Guidance Scale)**: Prompt adherence. Higher values follow the prompt strictly; lower values allow more AI creativity (Recommended: 3.5 - 7.0).
-*   **Seed**: Used to reproduce a specific image. Leave empty for random results.
-*   **LoRA**: Supports loading style models. Simply enter the LoRA Model ID from ModelScope, and weights are automatically balanced (Supports mixing up to 6 LoRAs).
+ModelScope has a thriving ecosystem of text-to-image models. We adopted an open design:
+*   **Custom Model ID**: You can enter any Text-to-Image Model ID from ModelScope in the settings.
+    *   👉 [Find more Text-to-Image Models](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:text-to-image-synthesis&type=tasks)
+    *   *Compatibility Hint: Models based on **SDXL** or **SD 1.5** architectures work best. Newer architectures like Flux or Qwen-Image may require self-testing of parameters.*
+
+**Professional Control Panel** (Click the adjustment icon inside the input box to open):
+
+*   **Aspect Ratio / Size**: Presets for common resolutions; supports **Custom** width/height.
+*   **Negative Prompt**: What you do **NOT** want to see (e.g., `blurry, ugly, low quality`).
+*   **Steps**: Iteration steps. Higher values mean more detail but longer time (Recommended: **20 - 30**).
+*   **CFG**: Prompt adherence. Higher follows prompt strictly; lower allows AI freedom (Recommended: **3.5 - 7.0**).
+*   **Seed**: Seed number. Use the same seed to reproduce a specific image.
+*   **LoRA**: Supports loading style models. Enter the LoRA Model ID from ModelScope, and the system automatically balances weights (Supports mixing up to 6 LoRAs).
 
 ---
 
@@ -88,10 +94,10 @@ If you wish to run locally or contribute, follow these steps.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-username/modelscope-prism.git
+git clone https://github.com/NeutrinoY/ModelScope-Prism.git
 
 # 2. Enter directory
-cd modelscope-prism
+cd ModelScope-Prism
 
 # 3. Install dependencies
 npm install
@@ -102,21 +108,22 @@ npm run dev
 
 Open your browser and visit `http://localhost:3000`.
 
-#### Project Structure
-*   `app/api/chat/route.ts`: Core backend API handling streaming communication with ModelScope. Includes manual SSE parsing logic to support specific thinking fields (`reasoning_content`) and compatibility with DeepSeek/MiMo/GLM parameter formats.
-*   `components/chat`: UI components for LLM Chat.
-*   `components/image`: UI components for AIGC Image Generation.
-*   `lib/store.ts`: Global state management and local persistence logic based on Zustand.
-*   `lib/models.ts`: Model list configuration and strategy definitions.
-
-#### Deployment
-Recommended to use **Vercel** or **Zeabur** for one-click deployment.
-*   This is a standard Next.js application, no complex Docker configuration required.
-*   Since the API Route uses Edge Runtime or Node.js to forward requests, be aware of server network connectivity if deploying in certain regions.
+#### Core Project Structure
+*   **`app/api/`**: Backend API Routes (Edge/Node.js Runtime)
+    *   `chat/route.ts`: Handles LLM streaming chat, including manual SSE parsing for `reasoning_content`.
+    *   `image/`: Handles AIGC generation requests and status polling.
+*   **`components/`**: UI Component Library
+    *   `chat/`: LLM specific components (Bubbles, Markdown Renderer).
+    *   `image/`: AIGC specific components (Canvas, Control Panel, LoRA Manager).
+    *   `vision/`: VLM specific components.
+    *   `layout/`: Global layout (Sidebar, Dock).
+*   **`lib/`**: Utilities & State
+    *   `store.ts`: **Zustand**-based global state management with `persist` for local storage.
+    *   `models.ts`: Model list configuration and Thinking Mode strategies.
 
 ---
 
 <div align="center">
   If this project helps you, please give it a ⭐️ Star!<br/>
-  Made with ❤️ by ModelScope Studio Team
+  Made with ❤️ by NeutrinoY
 </div>

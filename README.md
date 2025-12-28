@@ -4,19 +4,22 @@
 
   # ModelScope Prism
 
-  **对话 · 视觉 · 绘图，您的 ModelScope 全能探索空间**
+  **融合对话、视觉与创意的 ModelScope 探索空间**
 
 **中文 | [English](./README_EN.md)**
+
 </div>
+
+
 
 ---
 
-**ModelScope Prism** 是一个基于 Next.js 构建的开源 AI Web 应用。作为 ModelScope（魔搭社区）API 服务的现代化前端界面，它集成了 **LLM 深度对话**、**VLM 视觉识别** 和 **AIGC 专业绘图** 三大核心能力，无需部署复杂后端，即可为您提供流畅、美观且强大的 AI 体验。
+**ModelScope Prism** 是一个基于 Next.js 构建的开源 AI Web 应用。作为 ModelScope（魔搭社区）API 服务的现代化前端界面，它集成了 **LLM 对话**、**VLM 视觉识别** 和 **AIGC 绘图** 三大核心能力，无需部署复杂后端，即可为您提供流畅、美观且强大的 AI 体验。
 
 ### ✨ 核心亮点
 
 - **🧠 深度思考模式**：完美支持 **DeepSeek V3.2**、**Qwen3**、**GLM-4.7** 等前沿模型，开启后可原生展示思维链（Chain of Thought），让 AI 的推理过程清晰可见。
-- **🎨 专业级 AIGC 画板**：不仅是生成图片，更支持 **LoRA 模型加载**、**CFG/Steps 微调**、**自定义分辨率** 以及 **沉浸式图片浏览器**。
+- **🎨  AIGC 画板**：不仅是生成图片，更支持 **LoRA 模型加载**、**CFG/Steps 微调**、**自定义分辨率** 以及 **沉浸式图片浏览器**。
 - **👀 多模态视觉**：支持 **Qwen3-VL** 等视觉大模型，上传图片即可进行深度问答与分析。
 - **🔒 数据隐私安全**：秉持 Local-First 原则，所有对话记录、Access Token 和设置均存储在您的**浏览器本地 (Local Storage)**，除直连 ModelScope API 外，不会上传至任何第三方服务器。
 - **📱 响应式设计**：无论是 4K 大屏显示器还是移动设备，都能获得最佳的交互体验。
@@ -92,10 +95,10 @@ ModelScope 拥有繁荣的文生图模型生态。由于模型众多，我们采
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/your-username/modelscope-prism.git
+git clone https://github.com/NeutrinoY/ModelScope-Prism.git
 
 # 2. 进入目录
-cd modelscope-prism
+cd ModelScope-Prism
 
 # 3. 安装依赖
 npm install
@@ -116,12 +119,13 @@ npm run dev
     *   `vision/`: VLM 模块专用组件。
     *   `layout/`: 全局布局 (侧边栏、Dock 栏)。
 *   **`lib/`**: 工具与状态
-    *   `store.ts`: 基于 **Zustand** 的全局状态管理，实现了 `persist` 本地持久化逻辑。
+    *   `store.ts`: 基于 Zustand 的全局状态管理，实现了 `persist` 本地持久化逻辑。
     *   `models.ts`: 模型列表配置与 Thinking 模式策略定义。
 
 ---
 
 <div align="center">
   如果这个项目对您有帮助，请给一个 ⭐️ Star 支持一下！<br/>
-  Made with ❤️ by ModelScope Studio Team
+  Made with ❤️ by NeutrinoY
 </div>
+
