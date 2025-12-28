@@ -1,15 +1,12 @@
-[English](./README_EN.md)
-
 <div align="center">
-  <img src="public/logo.webp" alt="ModelScope Prism" width="120" />
+  <img src="public/logo.webp" alt="ModelScope Prism" width="150" />
+
 
   # ModelScope Prism
 
   **对话 · 视觉 · 绘图，您的 ModelScope 全能探索空间**
 
-  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-  ![Next.js](https://img.shields.io/badge/built%20with-Next.js-black)
-  ![ModelScope](https://img.shields.io/badge/powered%20by-ModelScope-purple)
+**中文 | [English](./README_EN.md)**
 </div>
 
 ---
