@@ -73,12 +73,17 @@ ModelScope has a thriving ecosystem of text-to-image models. We adopted an open 
 
 **Professional Control Panel** (Click the adjustment icon inside the input box to open):
 
-*   **Aspect Ratio / Size**: Presets for common resolutions; supports **Custom** width/height.
-*   **Negative Prompt**: What you do **NOT** want to see (e.g., `blurry, ugly, low quality`).
-*   **Steps**: Iteration steps. Higher values mean more detail but longer time (Recommended: **20 - 30**).
-*   **CFG**: Prompt adherence. Higher follows prompt strictly; lower allows AI freedom (Recommended: **3.5 - 7.0**).
-*   **Seed**: Seed number. Use the same seed to reproduce a specific image.
-*   **LoRA**: Supports loading style models. Enter the LoRA Model ID from ModelScope, and the system automatically balances weights (Supports mixing up to 6 LoRAs).
+To accommodate varying parameter compatibility across models, we designed a **Basic/Advanced** dual mode:
+
+*   **Basic Mode (Default)**: Sends only essential parameters for maximum compatibility.
+    *   **Aspect Ratio / Size**: Presets for common resolutions; supports **Custom** width/height.
+    *   **Negative Prompt**: Tell the AI what you do **NOT** want to see (e.g., `blurry, ugly, low quality`).
+*   **Advanced Mode**:
+    *   Unlock by toggling **"Enable Advanced Mode"** in the panel. Once unlocked, you can adjust (*Note: Improper settings may degrade quality*):
+    *   **Steps**: Iteration steps. Higher values mean more detail but longer time (Recommended: **20 - 30**).
+    *   **CFG**: Prompt adherence. Higher follows prompt strictly; lower allows AI freedom (Recommended: **3.5 - 7.0**).
+    *   **Seed**: Seed number. Use the same seed to reproduce a specific image.
+    *   **LoRA**: Supports loading style models. Enter the LoRA Model ID, and the system automatically balances weights (Supports mixing up to 6 LoRAs).
 
 ---
 
