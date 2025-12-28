@@ -5,13 +5,13 @@
 
   **Blending Conversation, Vision, and Creativity into One ModelScope Exploration Space**
 
-    **[中文](./README.md) | English**
+**[中文](./README.md) | English**
 
   </div>
 
   
 
-  ---
+---
 
 **ModelScope Prism** is an open-source AI web application built with Next.js. As a modern frontend interface for ModelScope API services, it integrates three core capabilities: **LLM Chat**, **VLM Visual Recognition**, and **AIGC Image Generation**. It provides a smooth, beautiful, and powerful AI experience without the need for complex backend deployment.
 
@@ -118,7 +118,7 @@ Open your browser and visit `http://localhost:3000`.
     *   `vision/`: VLM specific components.
     *   `layout/`: Global layout (Sidebar, Dock).
 *   **`lib/`**: Utilities & State
-    *   `store.ts`: **Zustand**-based global state management with `persist` for local storage.
+    *   `store.ts`: Zustand-based global state management with `persist` for local storage.
     *   `models.ts`: Model list configuration and Thinking Mode strategies.
 
 ---
