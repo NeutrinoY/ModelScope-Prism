@@ -24,15 +24,19 @@ export async function GET(
       }
     });
 
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      throw new Error(`Task Status Error: ${await response.text()}`);
+      throw new Error(`Task Status Error: ${responseText}`);
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
     
-    // Normalize response
-    // ModelScope returns { task_status: 'SUCCEED' | 'RUNNING' | 'FAILED', output_images: [...] }
-    return new Response(JSON.stringify(data), { status: 200 });
+    return new Response(JSON.stringify({ 
+      task_status: data.task_status, 
+      output_images: data.output_images || [],
+      raw: data 
+    }), { status: 200 });
 
   } catch (error: any) {
     console.error('Task Status Error:', error);

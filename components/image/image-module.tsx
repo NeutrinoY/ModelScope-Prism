@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import Masonry from 'react-masonry-css'
 
 const RESOLUTION_PRESETS = [
   "1024x1024",
@@ -49,8 +50,9 @@ export function ImageModule() {
   const [customW, setCustomW] = useState(1024)
   const [customH, setCustomH] = useState(1024)
   const [steps, setSteps] = useState(30)
-  const [guidance, setGuidance] = useState(3.5)
+  const [guidance, setGuidance] = useState(6.0)
   const [seed, setSeed] = useState('')
+  const [useAdvancedParams, setUseAdvancedParams] = useState(false)
   
   // LoRA State
   const [loraItems, setLoraItems] = useState<LoraItem[]>([])
@@ -239,13 +241,16 @@ export function ImageModule() {
         prompt,
         negative_prompt: negativePrompt,
         size: finalSize,
-        steps,
-        guidance,
         model: imageModelId,
         apiKey
       }
-      if (seed) payload.seed = parseInt(seed)
-      if (finalLoras) payload.loras = finalLoras
+
+      if (useAdvancedParams) {
+        payload.steps = steps
+        payload.guidance = guidance
+        if (seed) payload.seed = parseInt(seed)
+        if (finalLoras) payload.loras = finalLoras
+      }
 
       const res = await fetch('/api/image/generate', {
         method: 'POST',
@@ -302,36 +307,46 @@ export function ImageModule() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {/* Loading Placeholder */}
-              {isGenerating && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="aspect-square rounded-2xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center relative overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-                  <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Dreaming...</p>
-                </motion.div>
-              )}
+            <div className="max-w-7xl mx-auto px-2">
+              <Masonry
+                breakpointCols={{ default: 3, 1100: 2, 700: 1 }}
+                className="flex w-auto -ml-4 pb-24"
+                columnClassName="pl-4 bg-clip-padding"
+              >
+                {/* Loading Placeholder */}
+                {isGenerating && (
+                  <div className="mb-6">
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="aspect-square rounded-2xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center relative overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
+                      <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Dreaming...</p>
+                    </motion.div>
+                  </div>
+                )}
 
-              {/* Gallery Items */}
-              <AnimatePresence mode="popLayout">
+                {/* Gallery Items */}
                 {gallery.map((img) => (
                   <motion.div
                     layout
                     key={img.id}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
                     onClick={() => setViewingImage(img)}
-                    className="group relative aspect-square rounded-2xl overflow-hidden bg-muted border border-border/50 shadow-sm cursor-zoom-in"
+                    className="group relative rounded-2xl overflow-hidden bg-muted border border-border/50 shadow-sm cursor-zoom-in mb-6 break-inside-avoid"
                   >
-                    <img src={img.url} alt={img.prompt} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    {/* Simple Natural Image - No cropping, no forced aspect ratio */}
+                    <img 
+                      src={img.url} 
+                      alt={img.prompt} 
+                      className="w-full h-auto block object-cover transition-transform duration-700 group-hover:scale-105" 
+                    />
                     
                     {/* Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 z-10">
                       <p className="text-white text-xs line-clamp-2 mb-3 font-medium">{img.prompt}</p>
                       <div className="flex items-center justify-between">
                          <span className="text-[10px] text-white/70 font-mono bg-white/10 px-2 py-0.5 rounded-full backdrop-blur-md">{img.model.split('/').pop()}</span>
@@ -340,7 +355,7 @@ export function ImageModule() {
                     </div>
                   </motion.div>
                 ))}
-              </AnimatePresence>
+              </Masonry>
             </div>
           )}
         </div>
@@ -356,7 +371,7 @@ export function ImageModule() {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="A cyberpunk city in the rain, neon lights..."
                   rows={1}
-                  className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-hidden"
+                  className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
@@ -403,7 +418,7 @@ export function ImageModule() {
             exit={{ width: 0, opacity: 0 }}
             className="border-l border-border/50 bg-background/50 backdrop-blur-xl overflow-y-auto overflow-x-hidden"
           >
-            <div className="p-5 space-y-6 w-[320px] pb-24">
+            <div className="p-5 space-y-6 w-[320px] pb-12">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm tracking-wide uppercase text-muted-foreground">Parameters</h3>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowSettings(false)}>
@@ -411,8 +426,8 @@ export function ImageModule() {
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                 {/* Size */}
+              <div className="space-y-6">
+                 {/* Size (Always Visible) */}
                  <div className="space-y-2">
                     <Label className="text-xs font-medium">Aspect Ratio / Size</Label>
                     <select 
@@ -451,118 +466,146 @@ export function ImageModule() {
                     )}
                  </div>
 
-                 {/* Negative Prompt */}
+                 {/* Negative Prompt (Always Visible) */}
                  <div className="space-y-2">
-                    <Label htmlFor="neg-prompt" className="text-xs font-medium">Negative Prompt</Label>
+                    <Label htmlFor="neg-prompt" className="text-xs font-medium">Negative Prompt (Optional)</Label>
                     <Textarea 
                       id="neg-prompt" 
                       value={negativePrompt} 
                       onChange={(e) => setNegativePrompt(e.target.value)} 
                       placeholder="low quality, blurry, ugly..." 
-                      className="h-24 resize-none text-xs"
+                      className="h-20 resize-none text-xs"
                     />
                  </div>
 
-                 {/* Steps */}
-                 <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <Label className="text-xs font-medium">Steps ({steps})</Label>
+                 {/* Advanced Toggle Divider */}
+                 <div className="relative py-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border/50" />
                     </div>
-                    <Input 
-                      type="range" 
-                      min={1} 
-                      max={100} 
-                      value={steps} 
-                      onChange={(e) => setSteps(Number(e.target.value))}
-                      className="h-2 bg-transparent p-0 accent-primary" 
-                    />
+                    <div className="relative flex justify-center">
+                      <button 
+                        onClick={() => setUseAdvancedParams(!useAdvancedParams)}
+                        className={cn(
+                          "bg-background px-3 py-1 text-[10px] font-medium uppercase tracking-wider border rounded-full transition-all flex items-center gap-2",
+                          useAdvancedParams ? "border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"
+                        )}
+                      >
+                        <Settings2 className="h-3 w-3" />
+                        {useAdvancedParams ? "Advanced On" : "Advanced Off"}
+                      </button>
+                    </div>
                  </div>
 
-                 {/* Guidance */}
-                 <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <Label className="text-xs font-medium">CFG ({guidance})</Label>
-                    </div>
-                    <Input 
-                      type="range" 
-                      min={1.5} 
-                      max={20} 
-                      step={0.5}
-                      value={guidance} 
-                      onChange={(e) => setGuidance(Number(e.target.value))}
-                      className="h-2 bg-transparent p-0 accent-primary" 
-                    />
-                 </div>
+                 {/* Advanced Settings (Grayed out if disabled) */}
+                 <div className={cn("space-y-4 transition-all duration-300", !useAdvancedParams && "opacity-40 pointer-events-none grayscale")}>
+                     {/* Steps */}
+                     <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <Label className="text-xs font-medium">Steps ({steps})</Label>
+                        </div>
+                        <Input 
+                          type="range" 
+                          min={1} 
+                          max={100} 
+                          value={steps} 
+                          disabled={!useAdvancedParams}
+                          onChange={(e) => setSteps(Number(e.target.value))}
+                          className="h-2 bg-transparent p-0 accent-primary" 
+                        />
+                     </div>
 
-                 {/* Seed */}
-                 <div className="space-y-2">
-                    <Label htmlFor="seed" className="text-xs font-medium">Seed (Optional)</Label>
-                    <Input 
-                      id="seed" 
-                      type="number" 
-                      value={seed} 
-                      onChange={(e) => setSeed(e.target.value)} 
-                      placeholder="Random" 
-                      className="h-8 text-xs"
-                    />
-                 </div>
+                     {/* Guidance */}
+                     <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <Label className="text-xs font-medium">CFG ({guidance})</Label>
+                        </div>
+                        <Input 
+                          type="range" 
+                          min={1.5} 
+                          max={20} 
+                          step={0.5}
+                          value={guidance} 
+                          disabled={!useAdvancedParams}
+                          onChange={(e) => setGuidance(Number(e.target.value))}
+                          className="h-2 bg-transparent p-0 accent-primary" 
+                        />
+                     </div>
 
-                 {/* LoRAs */}
-                 <div className="space-y-3 pt-2 border-t border-border/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs font-medium">LoRAs ({loraItems.length}/6)</Label>
-                      </div>
-                      {isManualWeights && (
-                        <Button variant="ghost" size="sm" onClick={resetWeights} className="h-6 text-[10px] px-2 gap-1 text-primary">
-                          <RotateCcw className="h-3 w-3" /> Auto-Balance
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                       {loraItems.map((item) => (
-                         <div key={item.uid} className="flex gap-2 items-center">
-                           <Input 
-                             value={item.repo}
-                             onChange={(e) => updateLoraRepo(item.uid, e.target.value)}
-                             placeholder="Repo ID" 
-                             className="h-8 text-xs flex-1 min-w-0"
-                           />
-                           <Input 
-                             type="number"
-                             min={0}
-                             max={1}
-                             step={0.05}
-                             value={item.weight}
-                             onChange={(e) => updateLoraWeight(item.uid, Number(e.target.value))}
-                             className={cn(
-                               "h-8 w-16 text-xs text-center px-1",
-                               isManualWeights && "border-primary/50"
-                             )}
-                           />
-                           <Button 
-                             variant="ghost" 
-                             size="icon" 
-                             onClick={() => removeLora(item.uid)}
-                             className="h-8 w-8 shrink-0 hover:bg-destructive/10 hover:text-destructive"
-                           >
-                             <Trash2 className="h-3.5 w-3.5" />
-                           </Button>
-                         </div>
-                       ))}
-                       
-                       {loraItems.length < 6 && (
-                         <Button variant="outline" size="sm" onClick={addLora} className="w-full h-8 text-xs border-dashed gap-2">
-                           <PlusCircle className="h-3.5 w-3.5" /> Add LoRA
-                         </Button>
-                       )}
-                    </div>
+                     {/* Seed */}
+                     <div className="space-y-2">
+                        <Label htmlFor="seed" className="text-xs font-medium">Seed (Optional)</Label>
+                        <Input 
+                          id="seed" 
+                          type="number" 
+                          value={seed} 
+                          disabled={!useAdvancedParams}
+                          onChange={(e) => setSeed(e.target.value)} 
+                          placeholder="Random" 
+                          className="h-8 text-xs"
+                        />
+                     </div>
 
-                    <div className="flex justify-between items-center text-[10px] text-muted-foreground">
-                      <span>Total Weights: <span className={cn("font-mono", !isWeightValid && "text-destructive font-bold")}>{totalWeight.toFixed(2)}</span></span>
-                      <span>Target: 1.0</span>
-                    </div>
+                     {/* LoRAs */}
+                     <div className="space-y-3 pt-2 border-t border-border/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs font-medium">LoRAs ({loraItems.length}/6)</Label>
+                          </div>
+                          {isManualWeights && (
+                            <Button variant="ghost" size="sm" onClick={resetWeights} className="h-6 text-[10px] px-2 gap-1 text-primary">
+                              <RotateCcw className="h-3 w-3" /> Auto-Balance
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                           {loraItems.map((item) => (
+                             <div key={item.uid} className="flex gap-2 items-center">
+                               <Input 
+                                 value={item.repo}
+                                 disabled={!useAdvancedParams}
+                                 onChange={(e) => updateLoraRepo(item.uid, e.target.value)}
+                                 placeholder="Repo ID" 
+                                 className="h-8 text-xs flex-1 min-w-0"
+                               />
+                               <Input 
+                                 type="number"
+                                 min={0}
+                                 max={1}
+                                 step={0.05}
+                                 value={item.weight}
+                                 disabled={!useAdvancedParams}
+                                 onChange={(e) => updateLoraWeight(item.uid, Number(e.target.value))}
+                                 className={cn(
+                                   "h-8 w-16 text-xs text-center px-1",
+                                   isManualWeights && "border-primary/50"
+                                 )}
+                               />
+                               <Button 
+                                 variant="ghost" 
+                                 size="icon" 
+                                 disabled={!useAdvancedParams}
+                                 onClick={() => removeLora(item.uid)}
+                                 className="h-8 w-8 shrink-0 hover:bg-destructive/10 hover:text-destructive"
+                               >
+                                 <Trash2 className="h-3.5 w-3.5" />
+                               </Button>
+                             </div>
+                           ))}
+                           
+                           {loraItems.length < 6 && (
+                             <Button variant="outline" size="sm" onClick={addLora} disabled={!useAdvancedParams} className="w-full h-8 text-xs border-dashed gap-2">
+                               <PlusCircle className="h-3.5 w-3.5" /> Add LoRA
+                             </Button>
+                           )}
+                        </div>
+
+                        <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                          <span>Total Weights: <span className={cn("font-mono", !isWeightValid && "text-destructive font-bold")}>{totalWeight.toFixed(2)}</span></span>
+                          <span>Target: 1.0</span>
+                        </div>
+                     </div>
                  </div>
               </div>
             </div>

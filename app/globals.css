@@ -116,3 +116,24 @@ body {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Masonry Grid Styles */
+.my-masonry-grid {
+  display: flex;
+  margin-left: -24px; /* gutter size offset */
+  width: auto;
+}
+.my-masonry-grid_column {
+  padding-left: 24px; /* gutter size */
+  background-clip: padding-box;
+}
+
+/* For mobile gutter */
+@media (max-width: 768px) {
+  .my-masonry-grid {
+    margin-left: -16px;
+  }
+  .my-masonry-grid_column {
+    padding-left: 16px;
+  }
+}

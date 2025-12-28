@@ -269,7 +269,7 @@ export function VisionModule() {
               onKeyDown={handleKeyDown}
               placeholder="What's in this image?"
               rows={1}
-              className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-hidden scrollbar-none"
+              className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
             />
             <Button 
               type="submit" 

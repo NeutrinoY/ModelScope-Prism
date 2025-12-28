@@ -281,7 +281,7 @@ export function ChatModule() {
       <div className="w-full px-4 pt-2 pb-2 z-30">
         <div className="max-w-3xl mx-auto flex flex-col gap-2">
           <form onSubmit={handleSubmit} className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-2 shadow-2xl focus-within:border-primary/50 transition-all group flex items-end gap-2">
-            <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSubmit())} placeholder="Message ModelScope..." rows={1} className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-hidden scrollbar-none" />
+            <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSubmit())} placeholder="Message ModelScope..." rows={1} className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent" />
             <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5"><Send className="h-4 w-4" /></Button>
           </form>
         </div>
