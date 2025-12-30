@@ -61,6 +61,8 @@ export function VisionModule() {
       }
       reader.readAsDataURL(file)
     }
+    // Reset input so the same file can be selected again
+    e.target.value = ''
   }
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -182,7 +184,7 @@ export function VisionModule() {
                 <div className={cn(
                   "max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm overflow-hidden",
                   msg.role === 'user' 
-                    ? "bg-primary/5 text-primary-foreground border border-primary/10" 
+                    ? "bg-primary/10 text-foreground border border-primary/20" 
                     : "bg-muted/30 border border-border/30"
                 )}>
                   {Array.isArray(msg.content) ? (
