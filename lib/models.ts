@@ -53,12 +53,12 @@ export const LLM_SERIES: ModelSeries[] = [
     thinking: { id: 'Qwen/Qwen3-Next-80B-A3B-Thinking', strategy: 'native' }
   },
   {
-    key: 'glm-4.7',
-    name: 'GLM 4.7',
-    provider: 'ZhipuAI',
+    key: 'mimo-v2',
+    name: 'MiMo V2 Flash',
+    provider: 'Xiaomi',
     isIdSwitch: false,
-    instruct: { id: 'ZhipuAI/GLM-4.7', strategy: 'none' }, 
-    thinking: { id: 'ZhipuAI/GLM-4.7', strategy: 'template_args' }
+    instruct: { id: 'XiaomiMiMo/MiMo-V2-Flash', strategy: 'none' }, 
+    thinking: { id: 'XiaomiMiMo/MiMo-V2-Flash', strategy: 'template_args' }
   }
 ];
 
@@ -72,7 +72,7 @@ export const getModelCapability = (modelId: string) => {
 
 export const MODEL_STRATEGIES: Record<string, ModelStrategy> = {
   'deepseek-ai/DeepSeek-V3.2': 'deepseek',
-  'ZhipuAI/GLM-4.7': 'template_args',
+  'XiaomiMiMo/MiMo-V2-Flash': 'template_args',
   'Qwen/Qwen3-Next-80B-A3B-Thinking': 'native',
   'Qwen/Qwen3-235B-A22B-Thinking-2507': 'native',
 };

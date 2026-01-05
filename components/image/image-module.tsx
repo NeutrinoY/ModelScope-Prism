@@ -12,6 +12,12 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -53,6 +59,7 @@ export function ImageModule() {
   const [guidance, setGuidance] = useState(6.0)
   const [seed, setSeed] = useState('')
   const [useAdvancedParams, setUseAdvancedParams] = useState(false)
+  const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false)
   
   // LoRA State
   const [loraItems, setLoraItems] = useState<LoraItem[]>([])
@@ -289,8 +296,193 @@ export function ImageModule() {
     toast.success("Prompt copied to clipboard")
   }
 
+  const renderSettingsContent = () => (
+    <div className="space-y-6">
+       {/* Size (Always Visible) */}
+       <div className="space-y-2">
+          <Label className="text-xs font-medium">Aspect Ratio / Size</Label>
+          <select 
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            value={sizePreset}
+            onChange={(e) => setSizePreset(e.target.value)}
+          >
+            {RESOLUTION_PRESETS.map(p => (
+              <option key={p} value={p} className="bg-background">{p}</option>
+            ))}
+            <option value="custom" className="bg-background">Custom...</option>
+          </select>
+          
+          {sizePreset === 'custom' && (
+            <div className="flex items-center gap-2 mt-2">
+              <div className="relative">
+                <Input 
+                  type="number" 
+                  value={customW} 
+                  onChange={(e) => setCustomW(Number(e.target.value))} 
+                  className="h-8 text-xs"
+                />
+                <span className="absolute right-2 top-2 text-[10px] text-muted-foreground">W</span>
+              </div>
+              <span className="text-muted-foreground text-xs">x</span>
+              <div className="relative">
+                 <Input 
+                  type="number" 
+                  value={customH} 
+                  onChange={(e) => setCustomH(Number(e.target.value))} 
+                  className="h-8 text-xs"
+                />
+                <span className="absolute right-2 top-2 text-[10px] text-muted-foreground">H</span>
+              </div>
+            </div>
+          )}
+       </div>
+
+       {/* Negative Prompt (Always Visible) */}
+       <div className="space-y-2">
+          <Label htmlFor="neg-prompt" className="text-xs font-medium">Negative Prompt (Optional)</Label>
+          <Textarea 
+            id="neg-prompt" 
+            value={negativePrompt} 
+            onChange={(e) => setNegativePrompt(e.target.value)} 
+            placeholder="low quality, blurry, ugly..." 
+            className="h-20 resize-none text-xs"
+          />
+       </div>
+
+       {/* Advanced Toggle Divider */}
+       <div className="relative py-2">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border/50" />
+          </div>
+          <div className="relative flex justify-center">
+            <button 
+              onClick={() => setUseAdvancedParams(!useAdvancedParams)}
+              className={cn(
+                "bg-background px-3 py-1 text-[10px] font-medium uppercase tracking-wider border rounded-full transition-all flex items-center gap-2",
+                useAdvancedParams ? "border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"
+              )}
+            >
+              <Settings2 className="h-3 w-3" />
+              {useAdvancedParams ? "Advanced On" : "Advanced Off"}
+            </button>
+          </div>
+       </div>
+
+       {/* Advanced Settings (Grayed out if disabled) */}
+       <div className={cn("space-y-4 transition-all duration-300", !useAdvancedParams && "opacity-40 pointer-events-none grayscale")}>
+           {/* Steps */}
+           <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label className="text-xs font-medium">Steps ({steps})</Label>
+              </div>
+              <Input 
+                type="range" 
+                min={1} 
+                max={100} 
+                value={steps} 
+                disabled={!useAdvancedParams}
+                onChange={(e) => setSteps(Number(e.target.value))}
+                className="h-2 bg-transparent p-0 accent-primary" 
+              />
+           </div>
+
+           {/* Guidance */}
+           <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label className="text-xs font-medium">CFG ({guidance})</Label>
+              </div>
+              <Input 
+                type="range" 
+                min={1.5} 
+                max={20} 
+                step={0.5}
+                value={guidance} 
+                disabled={!useAdvancedParams}
+                onChange={(e) => setGuidance(Number(e.target.value))}
+                className="h-2 bg-transparent p-0 accent-primary" 
+              />
+           </div>
+
+           {/* Seed */}
+           <div className="space-y-2">
+              <Label htmlFor="seed" className="text-xs font-medium">Seed (Optional)</Label>
+              <Input 
+                id="seed" 
+                type="number" 
+                value={seed} 
+                disabled={!useAdvancedParams}
+                onChange={(e) => setSeed(e.target.value)} 
+                placeholder="Random" 
+                className="h-8 text-xs"
+              />
+           </div>
+
+           {/* LoRAs */}
+           <div className="space-y-3 pt-2 border-t border-border/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-medium">LoRAs ({loraItems.length}/6)</Label>
+                </div>
+                {isManualWeights && (
+                  <Button variant="ghost" size="sm" onClick={resetWeights} className="h-6 text-[10px] px-2 gap-1 text-primary">
+                    <RotateCcw className="h-3 w-3" /> Auto-Balance
+                  </Button>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                 {loraItems.map((item) => (
+                   <div key={item.uid} className="flex gap-2 items-center">
+                     <Input 
+                       value={item.repo}
+                       disabled={!useAdvancedParams}
+                       onChange={(e) => updateLoraRepo(item.uid, e.target.value)}
+                       placeholder="Repo ID" 
+                       className="h-8 text-xs flex-1 min-w-0"
+                     />
+                     <Input 
+                       type="number"
+                       min={0}
+                       max={1}
+                       step={0.05}
+                       value={item.weight}
+                       disabled={!useAdvancedParams}
+                       onChange={(e) => updateLoraWeight(item.uid, Number(e.target.value))}
+                       className={cn(
+                         "h-8 w-16 text-xs text-center px-1",
+                         isManualWeights && "border-primary/50"
+                       )}
+                     />
+                     <Button 
+                       variant="ghost" 
+                       size="icon" 
+                       disabled={!useAdvancedParams}
+                       onClick={() => removeLora(item.uid)}
+                       className="h-8 w-8 shrink-0 hover:bg-destructive/10 hover:text-destructive"
+                     >
+                       <Trash2 className="h-3.5 w-3.5" />
+                     </Button>
+                   </div>
+                 ))}
+                 
+                 {loraItems.length < 6 && (
+                   <Button variant="outline" size="sm" onClick={addLora} disabled={!useAdvancedParams} className="w-full h-8 text-xs border-dashed gap-2">
+                     <PlusCircle className="h-3.5 w-3.5" /> Add LoRA
+                   </Button>
+                 )}
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                <span>Total Weights: <span className={cn("font-mono", !isWeightValid && "text-destructive font-bold")}>{totalWeight.toFixed(2)}</span></span>
+                <span>Target: 1.0</span>
+              </div>
+           </div>
+       </div>
+    </div>
+  )
+
   return (
-    <div className="flex-1 flex overflow-hidden h-full">
+    <div className="flex-1 flex flex-col md:flex-row overflow-hidden h-full">
       
       {/* Left Area: Gallery & Input */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
@@ -371,7 +563,7 @@ export function ImageModule() {
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="A cyberpunk city in the rain, neon lights..."
                   rows={1}
-                  className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
+                  className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-xs md:text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
@@ -380,17 +572,29 @@ export function ImageModule() {
                   }}
                 />
                  <div className="flex flex-row gap-1 justify-end pb-0.5 pr-0.5">
+                   {/* Mobile Settings Trigger */}
+                   <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground md:hidden"
+                      onClick={() => setIsMobileSettingsOpen(true)}
+                    >
+                      <Sliders className="h-4 w-4" />
+                    </Button>
+                    
+                   {/* Desktop Settings Trigger */}
                    <Button 
                       variant="ghost" 
                       size="icon" 
                       className={cn(
-                        "h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground",
+                        "h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hidden md:flex",
                         showSettings && "bg-muted text-foreground"
                       )}
                       onClick={() => setShowSettings(!showSettings)}
                     >
                       <Sliders className="h-4 w-4" />
                     </Button>
+
                    <Button 
                       onClick={handleSubmit}
                       size="icon" 
@@ -409,209 +613,37 @@ export function ImageModule() {
         </div>
       </div>
 
-      {/* Right Settings Panel */}
+      {/* Desktop Right Settings Panel */}
       <AnimatePresence>
         {showSettings && (
           <motion.div 
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            className="border-l border-border/50 bg-background/50 backdrop-blur-xl overflow-y-auto overflow-x-hidden"
+            className="hidden md:block border-l border-border/50 bg-background/50 backdrop-blur-xl overflow-y-auto overflow-x-hidden"
           >
-            <div className="p-5 space-y-6 w-[320px] pb-12">
-              <div className="flex items-center justify-between">
+            <div className="p-5 w-[320px] pb-12">
+              <div className="flex items-center justify-between mb-6">
                 <h3 className="font-semibold text-sm tracking-wide uppercase text-muted-foreground">Parameters</h3>
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowSettings(false)}>
                   <Settings2 className="h-4 w-4" />
                 </Button>
               </div>
-
-              <div className="space-y-6">
-                 {/* Size (Always Visible) */}
-                 <div className="space-y-2">
-                    <Label className="text-xs font-medium">Aspect Ratio / Size</Label>
-                    <select 
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      value={sizePreset}
-                      onChange={(e) => setSizePreset(e.target.value)}
-                    >
-                      {RESOLUTION_PRESETS.map(p => (
-                        <option key={p} value={p} className="bg-background">{p}</option>
-                      ))}
-                      <option value="custom" className="bg-background">Custom...</option>
-                    </select>
-                    
-                    {sizePreset === 'custom' && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="relative">
-                          <Input 
-                            type="number" 
-                            value={customW} 
-                            onChange={(e) => setCustomW(Number(e.target.value))} 
-                            className="h-8 text-xs"
-                          />
-                          <span className="absolute right-2 top-2 text-[10px] text-muted-foreground">W</span>
-                        </div>
-                        <span className="text-muted-foreground text-xs">x</span>
-                        <div className="relative">
-                           <Input 
-                            type="number" 
-                            value={customH} 
-                            onChange={(e) => setCustomH(Number(e.target.value))} 
-                            className="h-8 text-xs"
-                          />
-                          <span className="absolute right-2 top-2 text-[10px] text-muted-foreground">H</span>
-                        </div>
-                      </div>
-                    )}
-                 </div>
-
-                 {/* Negative Prompt (Always Visible) */}
-                 <div className="space-y-2">
-                    <Label htmlFor="neg-prompt" className="text-xs font-medium">Negative Prompt (Optional)</Label>
-                    <Textarea 
-                      id="neg-prompt" 
-                      value={negativePrompt} 
-                      onChange={(e) => setNegativePrompt(e.target.value)} 
-                      placeholder="low quality, blurry, ugly..." 
-                      className="h-20 resize-none text-xs"
-                    />
-                 </div>
-
-                 {/* Advanced Toggle Divider */}
-                 <div className="relative py-2">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-border/50" />
-                    </div>
-                    <div className="relative flex justify-center">
-                      <button 
-                        onClick={() => setUseAdvancedParams(!useAdvancedParams)}
-                        className={cn(
-                          "bg-background px-3 py-1 text-[10px] font-medium uppercase tracking-wider border rounded-full transition-all flex items-center gap-2",
-                          useAdvancedParams ? "border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"
-                        )}
-                      >
-                        <Settings2 className="h-3 w-3" />
-                        {useAdvancedParams ? "Advanced On" : "Advanced Off"}
-                      </button>
-                    </div>
-                 </div>
-
-                 {/* Advanced Settings (Grayed out if disabled) */}
-                 <div className={cn("space-y-4 transition-all duration-300", !useAdvancedParams && "opacity-40 pointer-events-none grayscale")}>
-                     {/* Steps */}
-                     <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <Label className="text-xs font-medium">Steps ({steps})</Label>
-                        </div>
-                        <Input 
-                          type="range" 
-                          min={1} 
-                          max={100} 
-                          value={steps} 
-                          disabled={!useAdvancedParams}
-                          onChange={(e) => setSteps(Number(e.target.value))}
-                          className="h-2 bg-transparent p-0 accent-primary" 
-                        />
-                     </div>
-
-                     {/* Guidance */}
-                     <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <Label className="text-xs font-medium">CFG ({guidance})</Label>
-                        </div>
-                        <Input 
-                          type="range" 
-                          min={1.5} 
-                          max={20} 
-                          step={0.5}
-                          value={guidance} 
-                          disabled={!useAdvancedParams}
-                          onChange={(e) => setGuidance(Number(e.target.value))}
-                          className="h-2 bg-transparent p-0 accent-primary" 
-                        />
-                     </div>
-
-                     {/* Seed */}
-                     <div className="space-y-2">
-                        <Label htmlFor="seed" className="text-xs font-medium">Seed (Optional)</Label>
-                        <Input 
-                          id="seed" 
-                          type="number" 
-                          value={seed} 
-                          disabled={!useAdvancedParams}
-                          onChange={(e) => setSeed(e.target.value)} 
-                          placeholder="Random" 
-                          className="h-8 text-xs"
-                        />
-                     </div>
-
-                     {/* LoRAs */}
-                     <div className="space-y-3 pt-2 border-t border-border/50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Label className="text-xs font-medium">LoRAs ({loraItems.length}/6)</Label>
-                          </div>
-                          {isManualWeights && (
-                            <Button variant="ghost" size="sm" onClick={resetWeights} className="h-6 text-[10px] px-2 gap-1 text-primary">
-                              <RotateCcw className="h-3 w-3" /> Auto-Balance
-                            </Button>
-                          )}
-                        </div>
-                        
-                        <div className="space-y-2">
-                           {loraItems.map((item) => (
-                             <div key={item.uid} className="flex gap-2 items-center">
-                               <Input 
-                                 value={item.repo}
-                                 disabled={!useAdvancedParams}
-                                 onChange={(e) => updateLoraRepo(item.uid, e.target.value)}
-                                 placeholder="Repo ID" 
-                                 className="h-8 text-xs flex-1 min-w-0"
-                               />
-                               <Input 
-                                 type="number"
-                                 min={0}
-                                 max={1}
-                                 step={0.05}
-                                 value={item.weight}
-                                 disabled={!useAdvancedParams}
-                                 onChange={(e) => updateLoraWeight(item.uid, Number(e.target.value))}
-                                 className={cn(
-                                   "h-8 w-16 text-xs text-center px-1",
-                                   isManualWeights && "border-primary/50"
-                                 )}
-                               />
-                               <Button 
-                                 variant="ghost" 
-                                 size="icon" 
-                                 disabled={!useAdvancedParams}
-                                 onClick={() => removeLora(item.uid)}
-                                 className="h-8 w-8 shrink-0 hover:bg-destructive/10 hover:text-destructive"
-                               >
-                                 <Trash2 className="h-3.5 w-3.5" />
-                               </Button>
-                             </div>
-                           ))}
-                           
-                           {loraItems.length < 6 && (
-                             <Button variant="outline" size="sm" onClick={addLora} disabled={!useAdvancedParams} className="w-full h-8 text-xs border-dashed gap-2">
-                               <PlusCircle className="h-3.5 w-3.5" /> Add LoRA
-                             </Button>
-                           )}
-                        </div>
-
-                        <div className="flex justify-between items-center text-[10px] text-muted-foreground">
-                          <span>Total Weights: <span className={cn("font-mono", !isWeightValid && "text-destructive font-bold")}>{totalWeight.toFixed(2)}</span></span>
-                          <span>Target: 1.0</span>
-                        </div>
-                     </div>
-                 </div>
-              </div>
+              {renderSettingsContent()}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Mobile Settings Sheet */}
+      <Sheet open={isMobileSettingsOpen} onOpenChange={setIsMobileSettingsOpen}>
+        <SheetContent side="bottom" className="h-[80vh] overflow-y-auto rounded-t-3xl pt-6">
+           <SheetHeader className="mb-6">
+             <SheetTitle>Parameters</SheetTitle>
+           </SheetHeader>
+           {renderSettingsContent()}
+        </SheetContent>
+      </Sheet>
 
       {/* Image Viewer Dialog */}
       <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
@@ -657,29 +689,29 @@ export function ImageModule() {
                    </Button>
                  </div>
                  
-                 <div className="mt-4 bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 max-w-3xl w-full flex items-center gap-4 shadow-2xl z-50" onClick={(e) => e.stopPropagation()}>
+                 <div className="mt-4 bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-4 max-w-3xl w-full flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4 shadow-2xl z-50" onClick={(e) => e.stopPropagation()}>
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                      <p className="text-sm font-medium line-clamp-2" title={viewingImage.prompt}>{viewingImage.prompt}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+                      <p className="text-sm font-medium line-clamp-2 md:line-clamp-2" title={viewingImage.prompt}>{viewingImage.prompt}</p>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-mono">
                         <span>{viewingImage.model.split('/').pop()}</span>
                         {viewingImage.size && (
                            <>
-                             <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
+                             <span className="w-1 h-1 rounded-full bg-muted-foreground/50 hidden md:block" />
                              <span className="bg-muted/50 px-1.5 py-0.5 rounded text-[10px]">{viewingImage.size}</span>
                            </>
                         )}
-                        <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground/50 hidden md:block" />
                         <span>{new Date(viewingImage.createdAt).toLocaleString()}</span>
                       </div>
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      <Button onClick={() => copyPrompt(viewingImage.prompt)} variant="secondary" size="icon" className="rounded-xl" title="Copy Prompt">
+                    <div className="flex gap-2 shrink-0 justify-end border-t border-border/10 pt-2 md:border-none md:pt-0">
+                      <Button onClick={() => copyPrompt(viewingImage.prompt)} variant="secondary" size="icon" className="rounded-xl h-8 w-8 md:h-9 md:w-9" title="Copy Prompt">
                         <Copy className="h-4 w-4" />
                       </Button>
-                      <Button onClick={() => window.open(viewingImage.url, '_blank')} variant="secondary" size="icon" className="rounded-xl" title="Download">
+                      <Button onClick={() => window.open(viewingImage.url, '_blank')} variant="secondary" size="icon" className="rounded-xl h-8 w-8 md:h-9 md:w-9" title="Download">
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button onClick={() => setViewingImage(null)} variant="ghost" size="icon" className="rounded-xl hover:bg-destructive/10 hover:text-destructive">
+                      <Button onClick={() => setViewingImage(null)} variant="ghost" size="icon" className="rounded-xl h-8 w-8 md:h-9 md:w-9 hover:bg-destructive/10 hover:text-destructive">
                         <X className="h-4 w-4" />
                       </Button>
                     </div>

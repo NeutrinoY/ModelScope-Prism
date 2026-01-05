@@ -14,11 +14,11 @@
 
 ---
 
-**ModelScope Prism** 是一个基于 Next.js 构建的开源 AI Web 应用。作为 ModelScope（魔搭社区）API 服务的现代化前端界面，它集成了 **LLM 对话**、**VLM 视觉识别** 和 **AIGC 绘图** 三大核心能力，无需部署复杂后端，即可为您提供流畅、美观且强大的 AI 体验。
+**[ModelScope Prism](https://modelscope-prism.neutrinoy.xyz)** 是一个基于 Next.js 构建的开源 AI Web 应用。作为 ModelScope（魔搭社区）API 服务的现代化前端界面，它集成了 **LLM 对话**、**VLM 视觉识别** 和 **AIGC 绘图** 三大核心能力，无需部署复杂后端，即可为您提供流畅、美观且强大的 AI 体验。
 
 ### ✨ 核心亮点
 
-- **🧠 深度思考模式**：完美支持 **DeepSeek V3.2**、**Qwen3**、**GLM-4.7** 等前沿模型，开启后可原生展示思维链（Chain of Thought），让 AI 的推理过程清晰可见。
+- **🧠 深度思考模式**：完美支持 **DeepSeek V3.2**、**Qwen3**、**MiMo-V2-Flash** 等前沿模型，开启后可原生展示思维链（Chain of Thought），让 AI 的推理过程清晰可见。
 - **🎨  AIGC 画板**：不仅是生成图片，更支持 **LoRA 模型加载**、**CFG/Steps 微调**、**自定义分辨率** 以及 **沉浸式图片浏览器**。
 - **👀 多模态视觉**：支持 **Qwen3-VL** 等视觉大模型，上传图片即可进行深度问答与分析。
 - **🔒 数据隐私安全**：秉持 Local-First 原则，所有对话记录、Access Token 和设置均存储在您的**浏览器本地 (Local Storage)**，除直连 ModelScope API 外，不会上传至任何第三方服务器。
@@ -34,7 +34,7 @@
 2. 复制您的 Access Token。
 
 #### 2. 配置 ModelScope Prism
-1. 打开部署好的网页（或本地启动后访问 `http://localhost:3000`）。
+1. 打开[部署好的网页](https://modelscope-prism.neutrinoy.xyz)（或本地启动后访问 `http://localhost:3000`）。
 2. 点击页面底部 **Dock 栏** 的 **设置图标** ⚙️。
 3. 将 Access Token 粘贴至 **ModelScope Access Token** 输入框并保存。
 
@@ -133,4 +133,3 @@ npm run dev
   如果这个项目对您有帮助，请给一个 ⭐️ Star 支持一下！<br/>
   Made with ❤️ by NeutrinoY
 </div>
-

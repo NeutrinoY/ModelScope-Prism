@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: 'API Key is required' }), { status: 400 });
     }
 
-    // Dynamic kwargs for GLM-4.7/MiMo support
+    // Dynamic kwargs for MiMo V2 support
     const chatTemplateKwargs: any = { enable_thinking: enableThinking };
     if (enableThinking) {
       chatTemplateKwargs.clear_thinking = false;

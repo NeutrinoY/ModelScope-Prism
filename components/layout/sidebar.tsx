@@ -21,7 +21,8 @@ import {
   SheetHeader, 
   SheetTitle, 
   SheetTrigger,
-  SheetClose 
+  SheetClose,
+  SheetDescription 
 } from "@/components/ui/sheet"
 import {
   Dialog,
@@ -37,7 +38,11 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
-export function Sidebar() {
+interface SidebarProps {
+  customTrigger?: React.ReactNode
+}
+
+export function Sidebar({ customTrigger }: SidebarProps) {
   const { 
     sessions, 
     activeSessionId, 
@@ -60,7 +65,7 @@ export function Sidebar() {
   }
 
   const handleExport = (session: Session) => {
-    let content = `# ${session.title}\n\nType: ${session.type}\nCreated: ${new Date(session.createdAt).toLocaleString()}\n\n---\n\n`
+    let content = `# ${session.title}\n\nType: ${session.type}\nCreated: ${new Date(session.updatedAt).toLocaleString()}\n\n---\n\n`
 
     if (session.type === 'chat' || session.type === 'vision') {
       const messages = (session.data as any).messages as Message[]
@@ -70,7 +75,7 @@ export function Sidebar() {
     } else {
       const images = (session.data as any).images as GeneratedImage[]
       images.forEach((img, i) => {
-        content += `### Image ${i + 1}\n\n**Prompt**: ${img.prompt}\n**Model**: ${img.model}\n\n![${img.prompt.replace(/[\[\]]/g, '')}](${img.url})\n\n`
+        content += `### Image ${i + 1}\n\n**Prompt**: ${img.prompt}\n**Model**: ${img.model}\n\n![${img.prompt.replace(/[[\]]/g, '')}](${img.url})\n\n`
       })
     }
 
@@ -106,17 +111,20 @@ export function Sidebar() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="fixed top-4 left-4 z-50 h-10 w-10 rounded-xl bg-background/50 backdrop-blur-md border border-border/50 shadow-sm hover:bg-background/80"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        {customTrigger || (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="fixed top-4 left-4 z-50 h-10 w-10 rounded-xl bg-background/50 backdrop-blur-md border border-border/50 shadow-sm hover:bg-background/80"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent side="left" className="w-[300px] p-0 bg-background/80 backdrop-blur-2xl border-r border-border/50 flex flex-col gap-0">
         <SheetHeader className="p-4 border-b border-border/20 flex flex-row items-center justify-between space-y-0">
           <SheetTitle className="text-lg font-semibold tracking-tight ml-1">History</SheetTitle>
+          <SheetDescription className="sr-only">Access your chat and image generation history.</SheetDescription>
           <div className="flex items-center gap-1">
             <Button onClick={handleCreate} size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-muted" title="New Session">
               <Plus className="h-4 w-4" />
@@ -143,7 +151,7 @@ export function Sidebar() {
                   className={cn(
                     "group relative flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
                     activeSessionId === session.id 
-                      ? "bg-primary/10 border border-primary/20 shadow-sm" 
+                      ? "bg-primary/10 border border-primary/20 shadow-sm"
                       : "hover:bg-muted/50 border border-transparent"
                   )}
                 >                <div className={cn(

@@ -13,11 +13,11 @@
 
 ---
 
-**ModelScope Prism** is an open-source AI web application built with Next.js. As a modern frontend interface for ModelScope API services, it integrates three core capabilities: **LLM Chat**, **VLM Visual Recognition**, and **AIGC Image Generation**. It provides a smooth, beautiful, and powerful AI experience without the need for complex backend deployment.
+**[ModelScope Prism](https://modelscope-prism.neutrinoy.xyz)** is an open-source AI web application built with Next.js. As a modern frontend interface for ModelScope API services, it integrates three core capabilities: **LLM Chat**, **VLM Visual Recognition**, and **AIGC Image Generation**. It provides a smooth, beautiful, and powerful AI experience without the need for complex backend deployment.
 
 ### ✨ Core Highlights
 
-- **🧠 Deep Thinking Mode**: Perfectly supports advanced models like **DeepSeek V3.2**, **Qwen3**, and **GLM-4.7**. Enable it to natively display the **Chain of Thought (CoT)**, making the AI's reasoning process visible.
+- **🧠 Deep Thinking Mode**: Perfectly supports advanced models like **DeepSeek V3.2**, **Qwen3**, and **MiMo-V2-Flash**. Enable it to natively display the **Chain of Thought (CoT)**, making the AI's reasoning process visible.
 - **🎨 AIGC Canvas**: More than just image generation—supports **LoRA Model Loading**, **CFG/Steps Fine-tuning**, **Custom Resolutions**, and an **Immersive Image Gallery**.
 - **👀 Multimodal Vision**: Supports visual models like **Qwen3-VL**, allowing you to upload images for in-depth Q&A and analysis.
 - **🔒 Data Privacy & Security**: Adheres to the **Local-First** principle. All chat history, Access Tokens, and settings are stored locally in your **browser (Local Storage)**. No data is uploaded to third-party servers other than direct calls to the ModelScope API.
@@ -33,7 +33,7 @@ This project relies on the Serverless Inference API provided by ModelScope.
 2. Copy your Access Token.
 
 #### 2. Configure ModelScope Prism
-1. Open the deployed website (or visit `http://localhost:3000` after starting locally).
+1. Open the [deployed website](https://modelscope-prism.neutrinoy.xyz) (or visit `http://localhost:3000` after starting locally).
 2. Click the **Settings Icon** ⚙️ on the **Dock** at the bottom of the page.
 3. Paste your Access Token into the **ModelScope Access Token** field and save.
 

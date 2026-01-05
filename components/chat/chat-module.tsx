@@ -167,7 +167,7 @@ export function ChatModule() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-muted/30 border border-border/50 rounded-2xl p-1.5 flex items-stretch gap-1 min-h-[56px]"
+                className="bg-muted/30 border border-border/50 rounded-2xl p-1.5 flex items-stretch gap-1 min-h-[56px] overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:overflow-visible"
               >
                 <LayoutGroup>
                   {LLM_SERIES.map((series) => {
@@ -178,11 +178,11 @@ export function ChatModule() {
                         key={series.key}
                         onClick={() => handleSeriesClick(series)}
                         className={cn(
-                          "flex-1 rounded-xl text-[11px] font-medium transition-all flex flex-col items-center justify-center gap-1 relative py-1.5",
+                          "flex-none w-[100px] md:w-auto md:flex-1 snap-center rounded-xl text-[11px] font-medium transition-all flex flex-col items-center justify-center gap-1 relative py-1.5",
                           isSelected ? "text-foreground" : "text-muted-foreground hover:bg-background/40"
                         )}
                       >
-                        <span className="font-semibold z-10">{series.name}</span>
+                        <span className="font-semibold z-10 truncate max-w-full px-1">{series.name}</span>
                         {series.thinking && (
                           <div 
                             onClick={(e) => toggleReasoning(e, series)}
@@ -200,10 +200,10 @@ export function ChatModule() {
                       </button>
                     )
                   })}
-                  <button onClick={() => document.dispatchEvent(new CustomEvent('open-settings'))} className={cn("flex-1 rounded-xl text-[11px] transition-all flex flex-col items-center justify-center gap-1 relative", isCustomModel ? "text-foreground" : "text-muted-foreground")}>
+                  <button onClick={() => document.dispatchEvent(new CustomEvent('open-settings'))} className={cn("flex-none w-[100px] md:w-auto md:flex-1 snap-center rounded-xl text-[11px] transition-all flex flex-col items-center justify-center gap-1 relative", isCustomModel ? "text-foreground" : "text-muted-foreground")}>
                     <span className="font-semibold z-10">Custom</span>
                     <Settings2 className="h-3 w-3 opacity-50 z-10" />
-                    {isCustomModel && <motion.div layoutId="act-bg" className="absolute inset-0 bg-background shadow-sm border border-border/50 rounded-xl -z-10" />}
+                    {isCustomModel && <motion.div layoutId="act-bg" className="absolute inset-0 bg-background shadow-sm border border-border/50 rounded-xl -z-10" /> }
                   </button>
                 </LayoutGroup>
               </motion.div>
