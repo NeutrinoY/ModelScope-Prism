@@ -1,5 +1,19 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware'
+import { get, set, del } from 'idb-keyval'
+
+// Custom storage engine using IndexedDB
+const idbStorage: StateStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    return (await get(name)) || null
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    await set(name, value)
+  },
+  removeItem: async (name: string): Promise<void> => {
+    await del(name)
+  },
+}
 
 export type ModuleType = 'chat' | 'vision' | 'image'
 
@@ -87,7 +101,7 @@ export const useAppStore = create<AppState>()(
       chatModelId: 'deepseek-ai/DeepSeek-V3.2',
       setChatModelId: (chatModelId) => set({ chatModelId }),
       
-      visionModelId: 'Qwen/Qwen3-VL-235B-A22B-Instruct',
+      visionModelId: 'Qwen/Qwen3.5-397B-A17B',
       setVisionModelId: (visionModelId) => set({ visionModelId }),
       
       imageModelId: 'Qwen/Qwen-Image',
@@ -167,7 +181,8 @@ export const useAppStore = create<AppState>()(
       })
     }),
     {
-      name: 'modelscope-storage-v3', // Changed name to reset storage and avoid conflicts
+      name: 'modelscope-storage-v4', // Increment version to apply new storage mechanism and avoid hydration mismatches
+      storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({ 
         apiKey: state.apiKey,
         chatModelId: state.chatModelId,
