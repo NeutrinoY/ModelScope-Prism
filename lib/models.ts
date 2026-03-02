@@ -1,4 +1,4 @@
-export type ModelStrategy = 'deepseek' | 'template_args' | 'native' | 'none';
+export type ModelStrategy = 'root_boolean' | 'kwargs_dict' | 'native_always_on' | 'none';
 
 export interface ModelVariant {
   id: string; // The actual ModelScope ID
@@ -26,39 +26,39 @@ export const LLM_SERIES: ModelSeries[] = [
     provider: 'DeepSeek',
     isIdSwitch: false,
     instruct: { id: 'deepseek-ai/DeepSeek-V3.2', strategy: 'none' }, // When OFF
-    thinking: { id: 'deepseek-ai/DeepSeek-V3.2', strategy: 'deepseek' } // When ON
+    thinking: { id: 'deepseek-ai/DeepSeek-V3.2', strategy: 'root_boolean' } // When ON
   },
   {
-    key: 'qwen3',
-    name: 'Qwen3 235B',
-    provider: 'Alibaba',
-    isIdSwitch: true,
-    instruct: { id: 'Qwen/Qwen3-235B-A22B-Instruct-2507', strategy: 'none' },
-    thinking: { id: 'Qwen/Qwen3-235B-A22B-Thinking-2507', strategy: 'native' }
+    key: 'glm-5',
+    name: 'GLM 5',
+    provider: 'ZhipuAI',
+    isIdSwitch: false,
+    instruct: { id: 'ZhipuAI/GLM-5', strategy: 'none' }, 
+    thinking: { id: 'ZhipuAI/GLM-5', strategy: 'root_boolean' }
   },
   {
-    key: 'qwen3-coder',
-    name: 'Qwen3 Coder',
+    key: 'minimax-m2.5',
+    name: 'MiniMax M2.5',
+    provider: 'MiniMax',
+    isIdSwitch: false,
+    instruct: { id: 'MiniMax/MiniMax-M2.5', strategy: 'none' },
+    thinking: { id: 'MiniMax/MiniMax-M2.5', strategy: 'native_always_on' } // Natively supports reasoning without extra params
+  },
+  {
+    key: 'kimi-k2.5',
+    name: 'Kimi K2.5',
+    provider: 'Moonshot',
+    isIdSwitch: false,
+    instruct: { id: 'moonshotai/Kimi-K2.5', strategy: 'none' },
+    thinking: { id: 'moonshotai/Kimi-K2.5', strategy: 'root_boolean' }
+  },
+  {
+    key: 'qwen3.5-397b',
+    name: 'Qwen3.5 397B',
     provider: 'Alibaba',
     isIdSwitch: false,
-    instruct: { id: 'Qwen/Qwen3-Coder-480B-A35B-Instruct', strategy: 'none' },
-    // No thinking variant
-  },
-  {
-    key: 'qwen3-next',
-    name: 'Qwen3 Next 80B',
-    provider: 'Alibaba',
-    isIdSwitch: true,
-    instruct: { id: 'Qwen/Qwen3-Next-80B-A3B-Instruct', strategy: 'none' },
-    thinking: { id: 'Qwen/Qwen3-Next-80B-A3B-Thinking', strategy: 'native' }
-  },
-  {
-    key: 'mimo-v2',
-    name: 'MiMo V2 Flash',
-    provider: 'Xiaomi',
-    isIdSwitch: false,
-    instruct: { id: 'XiaomiMiMo/MiMo-V2-Flash', strategy: 'none' }, 
-    thinking: { id: 'XiaomiMiMo/MiMo-V2-Flash', strategy: 'template_args' }
+    instruct: { id: 'Qwen/Qwen3.5-397B-A17B', strategy: 'none' },
+    thinking: { id: 'Qwen/Qwen3.5-397B-A17B', strategy: 'root_boolean' }
   }
 ];
 
@@ -71,10 +71,11 @@ export const getModelCapability = (modelId: string) => {
 };
 
 export const MODEL_STRATEGIES: Record<string, ModelStrategy> = {
-  'deepseek-ai/DeepSeek-V3.2': 'deepseek',
-  'XiaomiMiMo/MiMo-V2-Flash': 'template_args',
-  'Qwen/Qwen3-Next-80B-A3B-Thinking': 'native',
-  'Qwen/Qwen3-235B-A22B-Thinking-2507': 'native',
+  'deepseek-ai/DeepSeek-V3.2': 'root_boolean',
+  'ZhipuAI/GLM-5': 'root_boolean',
+  'MiniMax/MiniMax-M2.5': 'native_always_on',
+  'moonshotai/Kimi-K2.5': 'root_boolean',
+  'Qwen/Qwen3.5-397B-A17B': 'root_boolean',
 };
 
 export const getModelStrategy = (id: string): ModelStrategy => {

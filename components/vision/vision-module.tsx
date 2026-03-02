@@ -2,13 +2,13 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useAppStore, type Message, type VisionSessionData } from "@/lib/store"
-import { Send, User, Bot, Loader2, Image as ImageIcon, X, UploadCloud } from "lucide-react"
+import { Send, User, Bot, Loader2, Image as ImageIcon, X, UploadCloud, ChevronRight, BrainCircuit, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn, compressImage } from "@/lib/utils"
 
 export function VisionModule() {
   const { 
@@ -32,6 +32,8 @@ export function VisionModule() {
   const messages = (currentSession?.type === 'vision' ? (currentSession.data as VisionSessionData).messages : []) as Message[]
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -41,25 +43,42 @@ export function VisionModule() {
   }, [input])
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (scrollContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 150
+      
+      if (isNearBottom || !isLoading) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      }
+    }
   }
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+      setIsLoading(false)
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
         toast.error("Image size must be less than 10MB")
         return
       }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string)
+      try {
+        const compressedBase64 = await compressImage(file, 0.8)
+        setSelectedImage(compressedBase64)
+      } catch (error) {
+        toast.error("Failed to process image")
+        console.error(error)
       }
-      reader.readAsDataURL(file)
     }
     // Reset input so the same file can be selected again
     e.target.value = ''
@@ -102,6 +121,8 @@ export function VisionModule() {
     setSelectedImage(null)
     setIsLoading(true)
 
+    abortControllerRef.current = new AbortController()
+
     try {
       const response = await fetch('/api/vision', {
         method: 'POST',
@@ -110,7 +131,8 @@ export function VisionModule() {
           messages: updatedMessages,
           model: visionModelId,
           apiKey: apiKey
-        })
+        }),
+        signal: abortControllerRef.current.signal
       })
 
       if (!response.ok) throw new Error(await response.text())
@@ -119,22 +141,46 @@ export function VisionModule() {
       if (!reader) throw new Error("No reader available")
 
       let assistantContent = ''
+      let assistantReasoning = ''
+      let buffer = ''
       const textDecoder = new TextDecoder()
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = textDecoder.decode(value)
-        assistantContent += chunk
         
-        updateSessionData(sessionId!, { 
-          messages: [...updatedMessages, { role: 'assistant', content: assistantContent }] 
-        })
+        buffer += textDecoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const data = JSON.parse(line)
+            if (data.r) assistantReasoning += data.r
+            if (data.c) assistantContent += data.c
+
+            updateSessionData(sessionId!, { 
+              messages: [...updatedMessages, { 
+                role: 'assistant', 
+                content: assistantContent,
+                ...(assistantReasoning ? { reasoning: assistantReasoning } : {})
+              }] 
+            })
+          } catch (e) {
+            // ignore parse errors for partial chunks
+          }
+        }
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to analyze image")
+      if (error.name === 'AbortError') {
+        console.log("Vision generation stopped by user")
+      } else {
+        toast.error(error.message || "Failed to analyze image")
+      }
     } finally {
       setIsLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -150,7 +196,7 @@ export function VisionModule() {
       
       {/* Chat History - Full immersion with strict height control */}
       <div className="flex-1 relative min-h-0">
-        <div className="absolute inset-0 overflow-y-auto p-4">
+        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto p-4">
           <div className="space-y-6 min-h-full max-w-3xl mx-auto">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50 absolute inset-0">
@@ -198,7 +244,24 @@ export function VisionModule() {
                       ))}
                     </div>
                   ) : (
-                    <MarkdownRenderer content={msg.content as string} />
+                    <>
+                      {/* Reasoning Block */}
+                      {msg.reasoning && (
+                        <div className="mb-3 border-l-2 border-primary/20 pl-3 py-1">
+                          <details className="group" open={isLoading && i === messages.length - 1}>
+                            <summary className="text-[11px] font-medium text-muted-foreground cursor-pointer list-none flex items-center gap-1.5 hover:text-primary transition-colors">
+                              <BrainCircuit className="h-3 w-3" />
+                              <span>{isLoading && i === messages.length - 1 ? "Thinking..." : "Deep Thought Process"}</span>
+                              <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                            </summary>
+                            <div className="mt-2 text-[11px] leading-relaxed text-muted-foreground/80 font-mono whitespace-pre-wrap">
+                              {msg.reasoning}
+                            </div>
+                          </details>
+                        </div>
+                      )}
+                      <MarkdownRenderer content={msg.content as string} />
+                    </>
                   )}
                 </div>
               </motion.div>
@@ -273,15 +336,25 @@ export function VisionModule() {
               rows={1}
               className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
             />
-            <Button 
-              type="submit" 
-              size="icon" 
-              disabled={isLoading || (!input.trim() && !selectedImage)}
-              className="h-9 w-9 shrink-0 rounded-xl transition-all active:scale-95 mb-0.5"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
+            {isLoading ? (
+              <Button
+                type="button"
+                onClick={handleStop}
+                size="icon"
+                className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5 bg-muted text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <Square className="h-4 w-4 fill-current" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!input.trim() && !selectedImage}
+                className="h-9 w-9 shrink-0 rounded-xl transition-all active:scale-95 mb-0.5"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            )}          </form>
         </div>
       </div>
     </div>

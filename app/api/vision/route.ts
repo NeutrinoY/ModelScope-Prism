@@ -18,14 +18,15 @@ export async function POST(req: NextRequest) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: model || 'Qwen/Qwen3-VL-235B-A22B-Instruct',
+        model: model || 'Qwen/Qwen3.5-397B-A17B',
         messages,
         stream: true,
         max_tokens: 4096,
         // Include thinking params just in case future VLM models support it
         enable_thinking: true,
         chat_template_kwargs: {
-          enable_thinking: true
+          enable_thinking: true,
+          thinking: true
         }
       })
     });
@@ -42,8 +43,6 @@ export async function POST(req: NextRequest) {
         const encoder = new TextEncoder();
         
         let buffer = '';
-        let hasStartedReasoning = false;
-        let hasEndedReasoning = false;
 
         if (!reader) {
           controller.close();
@@ -74,23 +73,10 @@ export async function POST(req: NextRequest) {
                 const reasoning = delta.reasoning_content;
                 const content = delta.content;
 
-                // Handle Reasoning (Thinking)
-                if (reasoning) {
-                  if (!hasStartedReasoning) {
-                    controller.enqueue(encoder.encode("> **Thinking Process:**\n> "));
-                    hasStartedReasoning = true;
-                  }
-                  const formattedReasoning = reasoning.replace(/\n/g, "\n> ");
-                  controller.enqueue(encoder.encode(formattedReasoning));
-                }
-
-                // Handle Main Content
-                if (content) {
-                  if (hasStartedReasoning && !hasEndedReasoning) {
-                    controller.enqueue(encoder.encode("\n\n---\n\n"));
-                    hasEndedReasoning = true;
-                  }
-                  controller.enqueue(encoder.encode(content));
+                // Send structured JSON stream back to frontend
+                if (reasoning || content) {
+                  const payload = JSON.stringify({ r: reasoning || '', c: content || '' });
+                  controller.enqueue(encoder.encode(payload + '\n'));
                 }
 
               } catch (e) {
@@ -108,7 +94,7 @@ export async function POST(req: NextRequest) {
 
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/event-stream',
+        'Content-Type': 'application/x-ndjson',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },

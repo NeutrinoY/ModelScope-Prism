@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useAppStore, type Message, type ChatSessionData } from "@/lib/store"
 import { LLM_SERIES } from "@/lib/models"
-import { Send, User, Bot, Loader2, BrainCircuit, Settings2, ChevronDown, ChevronUp, ChevronRight, LayoutPanelTop } from "lucide-react"
+import { Send, User, Bot, Loader2, BrainCircuit, Settings2, ChevronDown, ChevronUp, ChevronRight, LayoutPanelTop, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer"
@@ -29,8 +29,16 @@ export function ChatModule() {
   const [forceShowSelector, setForceShowSelector] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
   
-  const [presetThinking, setPresetThinking] = useState<Record<string, boolean>>({})
+  const [presetThinking, setPresetThinking] = useState<Record<string, boolean>>(() => {
+    // Default all series to true initially
+    const initial: Record<string, boolean> = {}
+    LLM_SERIES.forEach(s => { initial[s.key] = true })
+    return initial
+  })
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -43,12 +51,29 @@ export function ChatModule() {
   const messages = (currentSession?.type === 'chat' ? (currentSession.data as ChatSessionData).messages : []) as Message[]
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    // Only scroll if the user is already near the bottom (within 100px)
+    // or if it's the user's first message / not streaming
+    if (scrollContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 150
+      
+      if (isNearBottom || !isLoading) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      }
+    }
   }
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+      setIsLoading(false)
+    }
+  }
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -71,12 +96,18 @@ export function ChatModule() {
     setInput('')
     setIsLoading(true)
     setForceShowSelector(false)
+    
+    abortControllerRef.current = new AbortController()
 
     // Reasoning Logic
     const currentSeries = LLM_SERIES.find(s => s.instruct.id === chatModelId || s.thinking?.id === chatModelId)
     let finalEnableThinking = enableThinking
     if (currentSeries) {
-       finalEnableThinking = currentSeries.isIdSwitch ? chatModelId === currentSeries.thinking?.id : !!presetThinking[currentSeries.key]
+       if (currentSeries.thinking?.strategy === 'native_always_on') {
+         finalEnableThinking = true
+       } else {
+         finalEnableThinking = currentSeries.isIdSwitch ? chatModelId === currentSeries.thinking?.id : !!presetThinking[currentSeries.key]
+       }
     }
 
     try {
@@ -88,7 +119,8 @@ export function ChatModule() {
           model: chatModelId,
           apiKey: apiKey,
           enableThinking: finalEnableThinking
-        })
+        }),
+        signal: abortControllerRef.current.signal
       })
 
       if (!response.ok) throw new Error("Failed to connect to API")
@@ -125,9 +157,14 @@ export function ChatModule() {
         }
       }
     } catch (error: any) {
-      toast.error(error.message)
+      if (error.name === 'AbortError') {
+        console.log('Stream aborted')
+      } else {
+        toast.error(error.message)
+      }
     } finally {
       setIsLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -141,6 +178,12 @@ export function ChatModule() {
   const toggleReasoning = (e: React.MouseEvent, series: typeof LLM_SERIES[0]) => {
     e.stopPropagation()
     if (!series.thinking) return
+    
+    if (series.thinking.strategy === 'native_always_on') {
+      toast.info("This model natively outputs reasoning and cannot be turned off.")
+      return
+    }
+
     if (series.isIdSwitch) {
        const isThinking = chatModelId === series.thinking.id
        setChatModelId(isThinking ? series.instruct.id : series.thinking.id)
@@ -151,7 +194,7 @@ export function ChatModule() {
 
   // Helper for UI thinking status
   const isCurrentlyReasoning = currentSeries 
-    ? (currentSeries.isIdSwitch ? chatModelId === currentSeries.thinking?.id : !!presetThinking[currentSeries.key])
+    ? (currentSeries.thinking?.strategy === 'native_always_on' ? true : (currentSeries.isIdSwitch ? chatModelId === currentSeries.thinking?.id : !!presetThinking[currentSeries.key]))
     : enableThinking
 
   return (
@@ -172,7 +215,8 @@ export function ChatModule() {
                 <LayoutGroup>
                   {LLM_SERIES.map((series) => {
                     const isSelected = currentSeries?.key === series.key
-                    const isOn = series.isIdSwitch ? (isSelected && chatModelId === series.thinking?.id) : (!!presetThinking[series.key])
+                    const isAlwaysOn = series.thinking?.strategy === 'native_always_on'
+                    const isOn = isAlwaysOn || (series.isIdSwitch ? (isSelected && chatModelId === series.thinking?.id) : (!!presetThinking[series.key]))
                     return (
                       <button
                         key={series.key}
@@ -188,10 +232,11 @@ export function ChatModule() {
                             onClick={(e) => toggleReasoning(e, series)}
                             className={cn(
                               "z-20 text-[8px] px-1.5 py-0.5 rounded-full border transition-all flex items-center gap-1",
-                              isOn ? "bg-primary text-primary-foreground border-primary" : "bg-background/40 border-border/40 text-muted-foreground/70"
+                              isOn ? "bg-primary text-primary-foreground border-primary" : "bg-background/40 border-border/40 text-muted-foreground/70",
+                              isAlwaysOn ? "opacity-80" : "cursor-pointer hover:brightness-110"
                             )}
                           >
-                            <BrainCircuit className="h-2 w-2" /> Reasoning
+                            <BrainCircuit className="h-2 w-2" /> {isAlwaysOn ? 'Always On' : 'Reasoning'}
                           </div>
                         )}
                         {isSelected && (
@@ -233,7 +278,7 @@ export function ChatModule() {
 
       {/* Chat History */}
       <div className="flex-1 relative min-h-0">
-        <div className="absolute inset-0 overflow-y-auto p-4">
+        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto p-4">
           <div className="space-y-6 min-h-full max-w-3xl mx-auto">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50 absolute inset-0">
@@ -282,7 +327,11 @@ export function ChatModule() {
         <div className="max-w-3xl mx-auto flex flex-col gap-2">
           <form onSubmit={handleSubmit} className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-2 shadow-2xl focus-within:border-primary/50 transition-all group flex items-end gap-2">
             <textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSubmit())} placeholder="Message ModelScope..." rows={1} className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent" />
-            <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5"><Send className="h-4 w-4" /></Button>
+            {isLoading ? (
+              <Button type="button" onClick={handleStop} size="icon" className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5 bg-muted text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"><Square className="h-4 w-4 fill-current" /></Button>
+            ) : (
+              <Button type="submit" size="icon" disabled={!input.trim()} className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5"><Send className="h-4 w-4" /></Button>
+            )}
           </form>
         </div>
       </div>
