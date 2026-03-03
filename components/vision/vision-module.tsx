@@ -168,9 +168,36 @@ export function VisionModule() {
               }] 
             })
           } catch (e) {
-            // ignore parse errors for partial chunks
+            // Fallback for occasional plain-text/non-JSON chunks.
+            assistantContent += line
+            updateSessionData(sessionId!, {
+              messages: [...updatedMessages, {
+                role: 'assistant',
+                content: assistantContent,
+                ...(assistantReasoning ? { reasoning: assistantReasoning } : {})
+              }]
+            })
           }
         }
+      }
+
+      // Flush final partial line if any remains.
+      if (buffer.trim()) {
+        try {
+          const data = JSON.parse(buffer)
+          if (data.r) assistantReasoning += data.r
+          if (data.c) assistantContent += data.c
+        } catch {
+          assistantContent += buffer
+        }
+
+        updateSessionData(sessionId!, {
+          messages: [...updatedMessages, {
+            role: 'assistant',
+            content: assistantContent,
+            ...(assistantReasoning ? { reasoning: assistantReasoning } : {})
+          }]
+        })
       }
     } catch (error: any) {
       if (error.name === 'AbortError') {

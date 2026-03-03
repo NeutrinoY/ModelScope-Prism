@@ -89,7 +89,7 @@ To accommodate varying parameter compatibility across models, we designed a **Ba
 
 ### 📝 Changelog
 
-#### v1.1 [2026.03.03]
+#### v1.1 [2026.03.02]
 
 **✨ Features**
 *   **Model Ecosystem Upgrade**: Comprehensively updated the preset model list with the latest SOTA models (DeepSeek V3.2, GLM-5, MiniMax M2.5, Kimi K2.5, Qwen3.5).
