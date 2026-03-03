@@ -10,6 +10,8 @@ import { MarkdownRenderer } from "@/components/shared/markdown-renderer"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { useStreamSessionRunner } from "@/hooks/use-stream-session-runner"
+import { requestChatStream } from "@/lib/services/chat-service"
 
 export function ChatModule() {
   const { 
@@ -25,11 +27,10 @@ export function ChatModule() {
   } = useAppStore()
   
   const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [forceShowSelector, setForceShowSelector] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const { isLoading, start, stop } = useStreamSessionRunner()
   
   const [presetThinking, setPresetThinking] = useState<Record<string, boolean>>(() => {
     // Default all series to true initially
@@ -67,13 +68,7 @@ export function ChatModule() {
     scrollToBottom()
   }, [messages])
 
-  const handleStop = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-      abortControllerRef.current = null
-      setIsLoading(false)
-    }
-  }
+  const handleStop = () => stop()
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -94,10 +89,7 @@ export function ChatModule() {
     updateSessionData(sessionId!, { messages: updatedMessages })
     
     setInput('')
-    setIsLoading(true)
     setForceShowSelector(false)
-    
-    abortControllerRef.current = new AbortController()
 
     // Reasoning Logic
     const currentSeries = LLM_SERIES.find(s => s.instruct.id === chatModelId || s.thinking?.id === chatModelId)
@@ -111,60 +103,31 @@ export function ChatModule() {
     }
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      let assistantContent = ''
+      let assistantReasoning = ''
+      await start({
+        request: (signal) => requestChatStream({
           messages: updatedMessages,
           model: chatModelId,
           apiKey: apiKey,
           enableThinking: finalEnableThinking
-        }),
-        signal: abortControllerRef.current.signal
+        }, signal),
+        onDelta: (data) => {
+          if (data.r) assistantReasoning += data.r
+          if (data.c) assistantContent += data.c
+
+          updateSessionData(sessionId!, {
+            messages: [...updatedMessages, {
+              role: 'assistant',
+              content: assistantContent,
+              reasoning: assistantReasoning
+            }]
+          })
+        },
+        onError: (message) => toast.error(message)
       })
-
-      if (!response.ok) throw new Error("Failed to connect to API")
-
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let assistantContent = ''
-      let assistantReasoning = ''
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader!.read()
-        if (done) break
-        
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (!line.trim()) continue
-          try {
-            const data = JSON.parse(line)
-            if (data.r) assistantReasoning += data.r
-            if (data.c) assistantContent += data.c
-            
-            updateSessionData(sessionId!, { 
-              messages: [...updatedMessages, { 
-                role: 'assistant', 
-                content: assistantContent, 
-                reasoning: assistantReasoning 
-              }] 
-            })
-          } catch (e) { } 
-        }
-      }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log('Stream aborted')
-      } else {
-        toast.error(error.message)
-      }
-    } finally {
-      setIsLoading(false)
-      abortControllerRef.current = null
+      toast.error(error.message || "Failed to connect to API")
     }
   }
 

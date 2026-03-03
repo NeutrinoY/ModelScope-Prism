@@ -1,4 +1,15 @@
 export type ModelStrategy = 'root_boolean' | 'kwargs_dict' | 'native_always_on' | 'none';
+export type ModuleCapability = 'chat' | 'vision' | 'image';
+
+export interface ModelProfile {
+  modelId: string;
+  thinking: {
+    strategy: ModelStrategy;
+    defaultEnabled: boolean;
+  };
+  strict: boolean;
+  capabilities: ModuleCapability[];
+}
 
 export interface ModelVariant {
   id: string; // The actual ModelScope ID
@@ -70,14 +81,48 @@ export const getModelCapability = (modelId: string) => {
   return { id: modelId, strategy: 'none' as ModelStrategy };
 };
 
-export const MODEL_STRATEGIES: Record<string, ModelStrategy> = {
-  'deepseek-ai/DeepSeek-V3.2': 'root_boolean',
-  'ZhipuAI/GLM-5': 'root_boolean',
-  'MiniMax/MiniMax-M2.5': 'native_always_on',
-  'moonshotai/Kimi-K2.5': 'root_boolean',
-  'Qwen/Qwen3.5-397B-A17B': 'root_boolean',
+export const MODEL_PROFILES: Record<string, ModelProfile> = {
+  'deepseek-ai/DeepSeek-V3.2': {
+    modelId: 'deepseek-ai/DeepSeek-V3.2',
+    thinking: { strategy: 'root_boolean', defaultEnabled: false },
+    strict: false,
+    capabilities: ['chat']
+  },
+  'ZhipuAI/GLM-5': {
+    modelId: 'ZhipuAI/GLM-5',
+    thinking: { strategy: 'root_boolean', defaultEnabled: false },
+    strict: false,
+    capabilities: ['chat']
+  },
+  'MiniMax/MiniMax-M2.5': {
+    modelId: 'MiniMax/MiniMax-M2.5',
+    thinking: { strategy: 'native_always_on', defaultEnabled: true },
+    strict: true,
+    capabilities: ['chat']
+  },
+  'moonshotai/Kimi-K2.5': {
+    modelId: 'moonshotai/Kimi-K2.5',
+    thinking: { strategy: 'root_boolean', defaultEnabled: false },
+    strict: false,
+    capabilities: ['chat']
+  },
+  'Qwen/Qwen3.5-397B-A17B': {
+    modelId: 'Qwen/Qwen3.5-397B-A17B',
+    thinking: { strategy: 'root_boolean', defaultEnabled: false },
+    strict: false,
+    capabilities: ['chat', 'vision']
+  },
+};
+
+export const getModelProfile = (id: string): ModelProfile => {
+  return MODEL_PROFILES[id] || {
+    modelId: id,
+    thinking: { strategy: 'none', defaultEnabled: false },
+    strict: false,
+    capabilities: ['chat']
+  };
 };
 
 export const getModelStrategy = (id: string): ModelStrategy => {
-  return MODEL_STRATEGIES[id] || 'none';
+  return getModelProfile(id).thinking.strategy;
 };

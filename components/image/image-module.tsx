@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useAppStore, type ImageSessionData, type GeneratedImage } from "@/lib/store"
-import { Sparkles, Download, Settings2, Loader2, RefreshCw, PlusCircle, Sliders, X, Maximize2, Trash2, RotateCcw, ChevronLeft, ChevronRight, Copy, UploadCloud } from "lucide-react"
+import { Sparkles, Download, Settings2, Loader2, RefreshCw, PlusCircle, Sliders, X, Maximize2, Trash2, RotateCcw, ChevronLeft, ChevronRight, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
@@ -20,8 +20,13 @@ import {
 } from "@/components/ui/sheet"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { cn, compressImage } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import Masonry from 'react-masonry-css'
+import { ReferenceImageInput } from "@/components/shared/reference-image-input"
+
+const ACTIVE_IMAGE_TASK_KEY = "msp_active_image_task_v1"
+const POLL_DELAYS_MS = [3000, 5000, 8000]
+const MAX_POLL_DURATION_MS = 3 * 60 * 1000
 
 const RESOLUTION_PRESETS = [
   "1024x1024",
@@ -36,6 +41,15 @@ interface LoraItem {
   uid: string
   repo: string
   weight: number
+}
+
+interface ActiveImageTask {
+  taskId: string
+  sessionId: string
+  prompt: string
+  model: string
+  size: string
+  startedAt: number
 }
 
 export function ImageModule() {
@@ -53,7 +67,6 @@ export function ImageModule() {
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
   const [imageEditUrl, setImageEditUrl] = useState('')
-  const [imageUrlDraft, setImageUrlDraft] = useState('')
   const [sizePreset, setSizePreset] = useState('1024x1024')
   const [customW, setCustomW] = useState(1024)
   const [customH, setCustomH] = useState(1024)
@@ -69,17 +82,14 @@ export function ImageModule() {
   
   // UI State
   const [isGenerating, setIsGenerating] = useState(false)
-  const [taskId, setTaskId] = useState<string | null>(null)
+  const [activeTask, setActiveTask] = useState<ActiveImageTask | null>(null)
   const [showSettings, setShowSettings] = useState(true)
   const [viewingImage, setViewingImage] = useState<GeneratedImage | null>(null)
-  const [imagePreviewError, setImagePreviewError] = useState(false)
 
   const currentSession = activeSessionId ? sessions[activeSessionId] : null
   const gallery = (currentSession?.type === 'image' ? (currentSession.data as ImageSessionData).images : []) as GeneratedImage[]
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const imageFileInputRef = useRef<HTMLInputElement>(null)
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -160,54 +170,128 @@ export function ImageModule() {
   const totalWeight = loraItems.reduce((acc, cur) => acc + cur.weight, 0)
   const isWeightValid = Math.abs(totalWeight - 1.0) < 0.02 || loraItems.length === 0
 
-  // Polling Logic
+  const clearActiveTask = useCallback(() => {
+    setActiveTask(null)
+    setIsGenerating(false)
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(ACTIVE_IMAGE_TASK_KEY)
+    }
+  }, [])
+
+  const persistActiveTask = useCallback((task: ActiveImageTask) => {
+    setActiveTask(task)
+    setIsGenerating(true)
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(ACTIVE_IMAGE_TASK_KEY, JSON.stringify(task))
+    }
+  }, [])
+
   useEffect(() => {
-    if (taskId && isGenerating && activeSessionId) {
-      pollTimerRef.current = setInterval(async () => {
+    if (typeof window === "undefined" || activeTask) return
+    const raw = window.sessionStorage.getItem(ACTIVE_IMAGE_TASK_KEY)
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw) as ActiveImageTask
+      if (
+        typeof parsed.taskId === "string" &&
+        typeof parsed.sessionId === "string" &&
+        typeof parsed.prompt === "string" &&
+        typeof parsed.model === "string" &&
+        typeof parsed.size === "string" &&
+        typeof parsed.startedAt === "number"
+      ) {
+        const age = Date.now() - parsed.startedAt
+        if (age < MAX_POLL_DURATION_MS) {
+          setActiveTask(parsed)
+          setIsGenerating(true)
+          toast.info("Resumed previous image task")
+        } else {
+          window.sessionStorage.removeItem(ACTIVE_IMAGE_TASK_KEY)
+        }
+      }
+    } catch {
+      window.sessionStorage.removeItem(ACTIVE_IMAGE_TASK_KEY)
+    }
+  }, [activeTask])
+
+  // Polling logic with backoff + timeout.
+  useEffect(() => {
+    if (!activeTask || !apiKey) return
+
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const finishWithSuccess = (imageUrl: string) => {
+      const state = useAppStore.getState()
+      const targetSession = state.sessions[activeTask.sessionId]
+      const existingImages =
+        targetSession?.type === 'image'
+          ? ((targetSession.data as ImageSessionData).images as GeneratedImage[])
+          : []
+
+      const newImage: GeneratedImage = {
+        id: crypto.randomUUID(),
+        url: imageUrl,
+        prompt: activeTask.prompt,
+        model: activeTask.model,
+        createdAt: Date.now(),
+        size: activeTask.size
+      }
+
+      updateSessionData(activeTask.sessionId, { images: [newImage, ...existingImages] })
+      toast.success("Image generated successfully!")
+      clearActiveTask()
+    }
+
+    const schedulePoll = (attempt: number) => {
+      const delay = POLL_DELAYS_MS[Math.min(attempt, POLL_DELAYS_MS.length - 1)]
+      timer = setTimeout(async () => {
+        if (cancelled) return
+
+        const elapsed = Date.now() - activeTask.startedAt
+        if (elapsed > MAX_POLL_DURATION_MS) {
+          toast.error("Image generation timed out. Please retry.")
+          clearActiveTask()
+          return
+        }
+
         try {
-          const res = await fetch(`/api/image/status/${taskId}`, {
-            headers: {
-              Authorization: `Bearer ${apiKey}`
-            }
+          const res = await fetch(`/api/image/status/${activeTask.taskId}`, {
+            headers: { Authorization: `Bearer ${apiKey}` }
           })
           const data = await res.json()
-          
+
           if (data.task_status === 'SUCCEED') {
-             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-             setIsGenerating(false)
-             setTaskId(null)
-             
-             if (data.output_images && data.output_images.length > 0) {
-               const finalSize = sizePreset === 'custom' ? `${customW}x${customH}` : sizePreset
-               const newImage: GeneratedImage = {
-                 id: crypto.randomUUID(),
-                 url: data.output_images[0],
-                 prompt: prompt, 
-                 model: imageModelId,
-                 createdAt: Date.now(),
-                 size: finalSize
-               }
-               updateSessionData(activeSessionId, { 
-                 images: [newImage, ...gallery] 
-               })
-               toast.success("Image generated successfully!")
-             }
-          } else if (data.task_status === 'FAILED') {
-             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-             setIsGenerating(false)
-             setTaskId(null)
-             toast.error("Image generation failed.")
+            if (Array.isArray(data.output_images) && data.output_images.length > 0) {
+              finishWithSuccess(data.output_images[0])
+            } else {
+              toast.error("Image generation finished but no image returned.")
+              clearActiveTask()
+            }
+            return
           }
+
+          if (data.task_status === 'FAILED') {
+            toast.error("Image generation failed.")
+            clearActiveTask()
+            return
+          }
+
+          schedulePoll(attempt + 1)
         } catch (e) {
           console.error("Polling error", e)
+          schedulePoll(attempt + 1)
         }
-      }, 3000)
+      }, delay)
     }
-    
+
+    schedulePoll(0)
+
     return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+      cancelled = true
+      if (timer) clearTimeout(timer)
     }
-  }, [taskId, isGenerating, apiKey, imageModelId, prompt, activeSessionId, gallery, updateSessionData, sizePreset, customW, customH])
+  }, [activeTask, apiKey, clearActiveTask, updateSessionData])
 
   const handleSubmit = async () => {
     if (!prompt.trim() || isGenerating) return
@@ -278,7 +362,15 @@ export function ImageModule() {
       
       const data = await res.json()
       if (data.task_id) {
-        setTaskId(data.task_id)
+        const nextTask: ActiveImageTask = {
+          taskId: data.task_id,
+          sessionId: sessionId!,
+          prompt,
+          model: imageModelId,
+          size: finalSize,
+          startedAt: Date.now()
+        }
+        persistActiveTask(nextTask)
         toast.info("Task submitted, generating...")
       } else if (data.output_images) {
         const newImage: GeneratedImage = {
@@ -298,57 +390,6 @@ export function ImageModule() {
       setIsGenerating(false)
       toast.error(e.message || "Failed to start generation")
     }
-  }
-
-  const handleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image size must be less than 10MB")
-      e.target.value = ''
-      return
-    }
-
-    try {
-      const base64 = await compressImage(file, 0.85)
-      setImageEditUrl(base64)
-      setImageUrlDraft('')
-      setImagePreviewError(false)
-      toast.success("Edit image loaded")
-    } catch (error) {
-      console.error(error)
-      toast.error("Failed to process image")
-    } finally {
-      e.target.value = ''
-    }
-  }
-
-  const isValidImageSource = (value: string) => {
-    const v = value.trim()
-    if (!v) return false
-    return /^https?:\/\/\S+$/i.test(v) || /^data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\r\n]+$/.test(v)
-  }
-
-  const applyImageUrl = () => {
-    const next = imageUrlDraft.trim()
-    if (!next) {
-      toast.error("Please enter an image URL")
-      return
-    }
-    if (!isValidImageSource(next)) {
-      toast.error("URL must be http(s) or data:image base64")
-      return
-    }
-    setImageEditUrl(next)
-    setImagePreviewError(false)
-    toast.success("Reference image set")
-  }
-
-  const clearEditImage = () => {
-    setImageEditUrl('')
-    setImageUrlDraft('')
-    setImagePreviewError(false)
   }
 
   const copyPrompt = (text: string) => {
@@ -615,71 +656,9 @@ export function ImageModule() {
         {/* Input Area */}
         <div className="w-full pt-2 pb-2 z-30 px-4">
           <div className="max-w-3xl mx-auto flex flex-col gap-3">
-            {/* Unified Reference Image Input */}
-            <div className="bg-background/70 border border-border/50 rounded-xl p-2.5 space-y-2">
-              <div className="text-[11px] font-medium text-muted-foreground">Reference Image (Optional)</div>
-              <div className="flex gap-2">
-                <Input
-                  value={imageUrlDraft}
-                  onChange={(e) => setImageUrlDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      applyImageUrl()
-                    }
-                  }}
-                  placeholder="Paste image URL (http/https) or data:image base64"
-                  className="h-8 text-xs"
-                />
-                <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={applyImageUrl}>
-                  Use URL
-                </Button>
-                <input
-                  ref={imageFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleEditImageUpload}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => imageFileInputRef.current?.click()}
-                  className="h-8 text-xs gap-1.5"
-                >
-                  <UploadCloud className="h-3.5 w-3.5" />
-                  Upload
-                </Button>
-              </div>
-
-              {imageEditUrl && (
-                <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 p-2">
-                  <div className="h-12 w-12 rounded-md overflow-hidden bg-muted shrink-0 border border-border/50">
-                    {!imagePreviewError ? (
-                      <img
-                        src={imageEditUrl}
-                        alt="Reference"
-                        className="h-full w-full object-cover"
-                        onError={() => setImagePreviewError(true)}
-                      />
-                    ) : (
-                      <div className="h-full w-full grid place-items-center text-[9px] text-muted-foreground">No Preview</div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {imageEditUrl.startsWith('data:image/') ? 'Local image (base64)' : imageEditUrl}
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={clearEditImage}>
-                    Clear
-                  </Button>
-                </div>
-              )}
-            </div>
-
             <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-1.5 shadow-2xl focus-within:border-primary/50 transition-all group">
                <div className="flex gap-2 items-end">
+                 <ReferenceImageInput compact value={imageEditUrl} onChange={setImageEditUrl} />
                  <textarea
                   ref={textareaRef}
                   value={prompt}

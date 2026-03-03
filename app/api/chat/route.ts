@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server';
 import { getModelStrategy } from '@/lib/models';
+import { apiConfig } from '@/lib/config';
 import {
+  attachRequestId,
   applyRateLimit,
+  createRequestId,
   extractApiKey,
   fetchWithTimeout,
   isAbortError,
@@ -64,19 +67,24 @@ function validateChatBody(body: ChatBody): {
 }
 
 export async function POST(req: NextRequest) {
-  const rateLimited = applyRateLimit(req, { routeKey: 'chat', max: 30, windowMs: 60_000 });
-  if (rateLimited) return rateLimited;
+  const requestId = createRequestId(req);
+  const rateLimited = applyRateLimit(req, {
+    routeKey: 'chat',
+    max: apiConfig.chat.rateMax,
+    windowMs: apiConfig.chat.rateWindowMs,
+  });
+  if (rateLimited) return attachRequestId(rateLimited, requestId);
 
   try {
-    const parsed = await parseJsonBody<ChatBody>(req, 350_000);
-    if (!parsed.ok) return parsed.response;
+    const parsed = await parseJsonBody<ChatBody>(req, apiConfig.chat.maxBodyBytes);
+    if (!parsed.ok) return attachRequestId(parsed.response, requestId);
 
     const validation = validateChatBody(parsed.data);
-    if (!validation.ok) return validation.response;
+    if (!validation.ok) return attachRequestId(validation.response, requestId);
 
     const apiKey = extractApiKey(req, parsed.data.apiKey);
     if (!apiKey) {
-      return jsonError('MISSING_API_KEY', 'API Key is required.', 400);
+      return jsonError('MISSING_API_KEY', 'API Key is required.', 400, { 'X-Request-Id': requestId });
     }
 
     const currentModel = validation.model || 'deepseek-ai/DeepSeek-V3.2';
@@ -109,15 +117,16 @@ export async function POST(req: NextRequest) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(payload)
-    }, 45_000);
+    }, apiConfig.chat.timeoutMs);
 
     if (!res.ok) {
       const upstreamBody = await res.text();
-      console.error('[chat upstream]', res.status, upstreamBody.slice(0, 500));
+      console.error('[chat upstream]', requestId, res.status, upstreamBody.slice(0, 500));
       return jsonError(
         'UPSTREAM_ERROR',
         'Model provider request failed.',
-        sanitizeUpstreamStatus(res.status)
+        sanitizeUpstreamStatus(res.status),
+        { 'X-Request-Id': requestId }
       );
     }
 
@@ -171,12 +180,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Request-Id': requestId,
+      }
+    });
   } catch (error: any) {
     if (isAbortError(error)) {
-      return jsonError('UPSTREAM_TIMEOUT', 'Upstream request timed out.', 504);
+      return jsonError('UPSTREAM_TIMEOUT', 'Upstream request timed out.', 504, { 'X-Request-Id': requestId });
     }
-    console.error('Chat API Error:', error);
-    return jsonError('INTERNAL_ERROR', 'Internal server error.', 500);
+    console.error('Chat API Error:', requestId, error);
+    return jsonError('INTERNAL_ERROR', 'Internal server error.', 500, { 'X-Request-Id': requestId });
   }
 }

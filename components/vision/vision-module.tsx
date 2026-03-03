@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useAppStore, type Message, type VisionSessionData } from "@/lib/store"
-import { Send, User, Bot, Loader2, Image as ImageIcon, X, UploadCloud, ChevronRight, BrainCircuit, Square } from "lucide-react"
+import { Send, User, Bot, Loader2, Image as ImageIcon, ChevronRight, BrainCircuit, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { toast } from "sonner"
-import { cn, compressImage } from "@/lib/utils"
+import { cn } from "@/lib/utils"
+import { useStreamSessionRunner } from "@/hooks/use-stream-session-runner"
+import { ReferenceImageInput } from "@/components/shared/reference-image-input"
 
 export function VisionModule() {
   const { 
@@ -23,16 +24,14 @@ export function VisionModule() {
 
   const [input, setInput] = useState('')
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const { isLoading, start, stop } = useStreamSessionRunner()
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const currentSession = activeSessionId ? sessions[activeSessionId] : null
   const messages = (currentSession?.type === 'vision' ? (currentSession.data as VisionSessionData).messages : []) as Message[]
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -57,32 +56,7 @@ export function VisionModule() {
     scrollToBottom()
   }, [messages])
 
-  const handleStop = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-      abortControllerRef.current = null
-      setIsLoading(false)
-    }
-  }
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("Image size must be less than 10MB")
-        return
-      }
-      try {
-        const compressedBase64 = await compressImage(file, 0.8)
-        setSelectedImage(compressedBase64)
-      } catch (error) {
-        toast.error("Failed to process image")
-        console.error(error)
-      }
-    }
-    // Reset input so the same file can be selected again
-    e.target.value = ''
-  }
+  const handleStop = () => stop()
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -116,81 +90,13 @@ export function VisionModule() {
       renameSession(sessionId!, input ? input.slice(0, 30) : "Image Analysis")
     }
 
-    const currentInput = input
     setInput('')
     setSelectedImage(null)
-    setIsLoading(true)
-
-    abortControllerRef.current = new AbortController()
 
     try {
-      const response = await fetch('/api/vision', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: updatedMessages,
-          model: visionModelId,
-          apiKey: apiKey
-        }),
-        signal: abortControllerRef.current.signal
-      })
-
-      if (!response.ok) throw new Error(await response.text())
-
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error("No reader available")
-
       let assistantContent = ''
       let assistantReasoning = ''
-      let buffer = ''
-      const textDecoder = new TextDecoder()
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        
-        buffer += textDecoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (!line.trim()) continue
-          try {
-            const data = JSON.parse(line)
-            if (data.r) assistantReasoning += data.r
-            if (data.c) assistantContent += data.c
-
-            updateSessionData(sessionId!, { 
-              messages: [...updatedMessages, { 
-                role: 'assistant', 
-                content: assistantContent,
-                ...(assistantReasoning ? { reasoning: assistantReasoning } : {})
-              }] 
-            })
-          } catch (e) {
-            // Fallback for occasional plain-text/non-JSON chunks.
-            assistantContent += line
-            updateSessionData(sessionId!, {
-              messages: [...updatedMessages, {
-                role: 'assistant',
-                content: assistantContent,
-                ...(assistantReasoning ? { reasoning: assistantReasoning } : {})
-              }]
-            })
-          }
-        }
-      }
-
-      // Flush final partial line if any remains.
-      if (buffer.trim()) {
-        try {
-          const data = JSON.parse(buffer)
-          if (data.r) assistantReasoning += data.r
-          if (data.c) assistantContent += data.c
-        } catch {
-          assistantContent += buffer
-        }
-
+      const syncAssistant = () => {
         updateSessionData(sessionId!, {
           messages: [...updatedMessages, {
             role: 'assistant',
@@ -199,15 +105,32 @@ export function VisionModule() {
           }]
         })
       }
+
+      await start({
+        request: (signal) => fetch('/api/vision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: updatedMessages,
+            model: visionModelId,
+            apiKey: apiKey
+          }),
+          signal
+        }),
+        allowPlainTextFallback: true,
+        onDelta: (data) => {
+          if (data.r) assistantReasoning += data.r
+          if (data.c) assistantContent += data.c
+          syncAssistant()
+        },
+        onPlainText: (text) => {
+          assistantContent += text
+          syncAssistant()
+        },
+        onError: (message) => toast.error(message || "Failed to analyze image")
+      })
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log("Vision generation stopped by user")
-      } else {
-        toast.error(error.message || "Failed to analyze image")
-      }
-    } finally {
-      setIsLoading(false)
-      abortControllerRef.current = null
+      toast.error(error.message || "Failed to analyze image")
     }
   }
 
@@ -311,49 +234,16 @@ export function VisionModule() {
       {/* Input Area */}
       <div className="w-full px-4 pt-2 pb-2 z-30">
         <div className="max-w-3xl mx-auto flex flex-col gap-2">
-          {/* Image Preview */}
-          <AnimatePresence>
-            {selectedImage && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                className="relative w-24 aspect-square rounded-xl border border-primary/20 overflow-hidden group shadow-lg bg-background p-1"
-              >
-                <img src={selectedImage} className="w-full h-full object-cover rounded-lg" alt="Preview" />
-                <button 
-                  onClick={() => setSelectedImage(null)}
-                  className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           <form 
             onSubmit={handleSubmit}
             className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-2 shadow-2xl focus-within:border-primary/50 transition-all group flex items-end gap-2"
           >
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleImageUpload} 
-              className="hidden" 
-              accept="image/*" 
+            <ReferenceImageInput
+              compact
+              value={selectedImage || ''}
+              onChange={(next) => setSelectedImage(next || null)}
+              uploadQuality={0.8}
             />
-            <Button 
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "h-9 w-9 shrink-0 rounded-xl hover:bg-primary/10 hover:text-primary transition-colors mb-0.5",
-                selectedImage && "text-primary"
-              )}
-            >
-              <UploadCloud className="h-5 w-5" />
-            </Button>
             <textarea
               ref={textareaRef}
               value={input}

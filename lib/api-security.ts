@@ -111,6 +111,17 @@ export function jsonError(code: string, message: string, status: number, headers
   });
 }
 
+export function createRequestId(req: NextRequest): string {
+  const fromHeader = req.headers.get('x-request-id')?.trim();
+  if (fromHeader && fromHeader.length <= 120) return fromHeader;
+  return crypto.randomUUID();
+}
+
+export function attachRequestId(response: Response, requestId: string): Response {
+  response.headers.set('X-Request-Id', requestId);
+  return response;
+}
+
 export async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);

@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import {
+  attachRequestId,
   applyRateLimit,
+  createRequestId,
   extractApiKey,
   fetchWithTimeout,
   isAbortError,
@@ -8,6 +10,7 @@ import {
   parseJsonBody,
   sanitizeUpstreamStatus,
 } from '@/lib/api-security';
+import { apiConfig } from '@/lib/config';
 
 // export const runtime = 'edge';
 
@@ -122,19 +125,24 @@ function validateImageGenerateBody(body: ImageGenerateBody): {
 }
 
 export async function POST(req: NextRequest) {
-  const rateLimited = applyRateLimit(req, { routeKey: 'image-generate', max: 10, windowMs: 60_000 });
-  if (rateLimited) return rateLimited;
+  const requestId = createRequestId(req);
+  const rateLimited = applyRateLimit(req, {
+    routeKey: 'image-generate',
+    max: apiConfig.imageGenerate.rateMax,
+    windowMs: apiConfig.imageGenerate.rateWindowMs,
+  });
+  if (rateLimited) return attachRequestId(rateLimited, requestId);
 
   try {
-    const parsed = await parseJsonBody<ImageGenerateBody>(req, 15_000_000);
-    if (!parsed.ok) return parsed.response;
+    const parsed = await parseJsonBody<ImageGenerateBody>(req, apiConfig.imageGenerate.maxBodyBytes);
+    if (!parsed.ok) return attachRequestId(parsed.response, requestId);
 
     const validation = validateImageGenerateBody(parsed.data);
-    if (!validation.ok) return validation.response;
+    if (!validation.ok) return attachRequestId(validation.response, requestId);
 
     const apiKey = extractApiKey(req, parsed.data.apiKey);
     if (!apiKey) {
-      return jsonError('MISSING_API_KEY', 'API Key is required.', 400);
+      return jsonError('MISSING_API_KEY', 'API Key is required.', 400, { 'X-Request-Id': requestId });
     }
 
     // ModelScope v1/images/generations payload
@@ -159,7 +167,7 @@ export async function POST(req: NextRequest) {
     let lastError;
 
     // Retry mechanism (max 3 attempts) for stability
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < apiConfig.imageGenerate.maxRetries; attempt++) {
       try {
         response = await fetchWithTimeout('https://api-inference.modelscope.cn/v1/images/generations', {
           method: 'POST',
@@ -169,7 +177,7 @@ export async function POST(req: NextRequest) {
             'X-ModelScope-Async-Mode': 'true'
           },
           body: JSON.stringify(payload)
-        }, 30_000);
+        }, apiConfig.imageGenerate.timeoutMs);
 
         // Break on success or non-retriable client errors (4xx)
         if (response.ok || response.status < 500) {
@@ -180,7 +188,9 @@ export async function POST(req: NextRequest) {
         }
       } catch (err: any) {
         lastError = err;
-        if (attempt < 2) await new Promise(res => setTimeout(res, 1000));
+        if (attempt < apiConfig.imageGenerate.maxRetries - 1) {
+          await new Promise((res) => setTimeout(res, apiConfig.imageGenerate.retryDelayMs));
+        }
       }
     }
 
@@ -191,11 +201,12 @@ export async function POST(req: NextRequest) {
     responseText = await response.text();
 
     if (!response.ok) {
-      console.error('[image generate upstream]', response.status, responseText.slice(0, 500));
+      console.error('[image generate upstream]', requestId, response.status, responseText.slice(0, 500));
       return jsonError(
         'UPSTREAM_ERROR',
         'Model provider request failed.',
-        sanitizeUpstreamStatus(response.status)
+        sanitizeUpstreamStatus(response.status),
+        { 'X-Request-Id': requestId }
       );
     }
 
@@ -205,13 +216,19 @@ export async function POST(req: NextRequest) {
        throw new Error('No task_id returned from API');
     }
 
-    return new Response(JSON.stringify({ task_id: data.task_id }), { status: 200 });
+    return new Response(JSON.stringify({ task_id: data.task_id }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'X-Request-Id': requestId,
+      }
+    });
 
   } catch (error: any) {
     if (isAbortError(error)) {
-      return jsonError('UPSTREAM_TIMEOUT', 'Upstream request timed out.', 504);
+      return jsonError('UPSTREAM_TIMEOUT', 'Upstream request timed out.', 504, { 'X-Request-Id': requestId });
     }
-    console.error('Image Generation Error:', error);
-    return jsonError('INTERNAL_ERROR', 'Internal server error.', 500);
+    console.error('Image Generation Error:', requestId, error);
+    return jsonError('INTERNAL_ERROR', 'Internal server error.', 500, { 'X-Request-Id': requestId });
   }
 }

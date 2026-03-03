@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import {
+  attachRequestId,
   applyRateLimit,
+  createRequestId,
   extractApiKey,
   fetchWithTimeout,
   isAbortError,
@@ -8,6 +10,7 @@ import {
   parseJsonBody,
   sanitizeUpstreamStatus,
 } from '@/lib/api-security';
+import { apiConfig } from '@/lib/config';
 
 export const runtime = 'edge';
 
@@ -48,19 +51,24 @@ function validateVisionBody(body: VisionBody): {
 }
 
 export async function POST(req: NextRequest) {
-  const rateLimited = applyRateLimit(req, { routeKey: 'vision', max: 20, windowMs: 60_000 });
-  if (rateLimited) return rateLimited;
+  const requestId = createRequestId(req);
+  const rateLimited = applyRateLimit(req, {
+    routeKey: 'vision',
+    max: apiConfig.vision.rateMax,
+    windowMs: apiConfig.vision.rateWindowMs,
+  });
+  if (rateLimited) return attachRequestId(rateLimited, requestId);
 
   try {
-    const parsed = await parseJsonBody<VisionBody>(req, 15_000_000);
-    if (!parsed.ok) return parsed.response;
+    const parsed = await parseJsonBody<VisionBody>(req, apiConfig.vision.maxBodyBytes);
+    if (!parsed.ok) return attachRequestId(parsed.response, requestId);
 
     const validation = validateVisionBody(parsed.data);
-    if (!validation.ok) return validation.response;
+    if (!validation.ok) return attachRequestId(validation.response, requestId);
 
     const apiKey = extractApiKey(req, parsed.data.apiKey);
     if (!apiKey) {
-      return jsonError('MISSING_API_KEY', 'API Key is required.', 400);
+      return jsonError('MISSING_API_KEY', 'API Key is required.', 400, { 'X-Request-Id': requestId });
     }
 
     // Direct fetch for better field control
@@ -82,15 +90,16 @@ export async function POST(req: NextRequest) {
           thinking: true
         }
       })
-    }, 60_000);
+    }, apiConfig.vision.timeoutMs);
 
     if (!res.ok) {
       const upstreamBody = await res.text();
-      console.error('[vision upstream]', res.status, upstreamBody.slice(0, 500));
+      console.error('[vision upstream]', requestId, res.status, upstreamBody.slice(0, 500));
       return jsonError(
         'UPSTREAM_ERROR',
         'Model provider request failed.',
-        sanitizeUpstreamStatus(res.status)
+        sanitizeUpstreamStatus(res.status),
+        { 'X-Request-Id': requestId }
       );
     }
 
@@ -155,13 +164,14 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/x-ndjson',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+        'X-Request-Id': requestId,
       },
     });
   } catch (error: any) {
     if (isAbortError(error)) {
-      return jsonError('UPSTREAM_TIMEOUT', 'Upstream request timed out.', 504);
+      return jsonError('UPSTREAM_TIMEOUT', 'Upstream request timed out.', 504, { 'X-Request-Id': requestId });
     }
-    console.error('Vision API Error:', error);
-    return jsonError('INTERNAL_ERROR', 'Internal server error.', 500);
+    console.error('Vision API Error:', requestId, error);
+    return jsonError('INTERNAL_ERROR', 'Internal server error.', 500, { 'X-Request-Id': requestId });
   }
 }

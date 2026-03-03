@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "probe": "node scripts/probe.mjs"
+    "probe": "node scripts/probe.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

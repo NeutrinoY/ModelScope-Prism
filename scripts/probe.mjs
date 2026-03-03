@@ -4,13 +4,23 @@ import path from 'path';
 
 const API_KEY = process.env.MS_API_KEY || process.env.MODELSCOPE_ACCESS_TOKEN || '';
 const MODEL_ID = process.argv[2];
-const REPEATS = Number(process.argv[3] || process.env.MS_PROBE_REPEATS || 2);
+const argModeOrRepeats = process.argv[3] || '';
+const argRepeats = process.argv[4] || '';
+const MODE = ['quick', 'full'].includes(argModeOrRepeats)
+  ? argModeOrRepeats
+  : (process.env.MS_PROBE_MODE || 'full').toLowerCase();
+const repeatsRaw = ['quick', 'full'].includes(argModeOrRepeats) ? argRepeats : argModeOrRepeats;
+const defaultRepeats = MODE === 'quick' ? 1 : 2;
+const REPEATS = Number(repeatsRaw || process.env.MS_PROBE_REPEATS || defaultRepeats);
 const SLEEP_MS = 1200;
 const TIMEOUT_MS = 45000;
 
 if (!MODEL_ID) {
-  console.error('Usage: node probe.mjs <Model/ID> [repeats]');
-  console.error('Example: node probe.mjs MiniMax/MiniMax-M2.5 2');
+  console.error('Usage: node probe.mjs <Model/ID> [quick|full] [repeats]');
+  console.error('Examples:');
+  console.error('  node probe.mjs MiniMax/MiniMax-M2.5');
+  console.error('  node probe.mjs MiniMax/MiniMax-M2.5 quick');
+  console.error('  node probe.mjs MiniMax/MiniMax-M2.5 full 2');
   process.exit(1);
 }
 
@@ -24,6 +34,11 @@ if (!API_KEY) {
 
 if (!Number.isInteger(REPEATS) || REPEATS < 1 || REPEATS > 5) {
   console.error('Invalid repeats. Use an integer between 1 and 5.');
+  process.exit(1);
+}
+
+if (!['quick', 'full'].includes(MODE)) {
+  console.error('Invalid mode. Use quick or full.');
   process.exit(1);
 }
 
@@ -226,6 +241,7 @@ function summarizeResults(results) {
 
 function deriveStrategy(ctx) {
   const {
+    mode,
     strict,
     baselineReasoning,
     rootOnReasoning,
@@ -256,6 +272,12 @@ function deriveStrategy(ctx) {
         notes: 'Reasoning can be toggled using chat_template_kwargs.',
       };
     }
+    if (mode === 'quick') {
+      return {
+        strategy: 'none',
+        notes: 'Quick mode result is inconclusive for disable-path. Run full mode for reliable toggle strategy.',
+      };
+    }
     return {
       strategy: 'native_always_on',
       notes: 'Reasoning is default and not reliably disabled by known toggles.',
@@ -282,7 +304,7 @@ function deriveStrategy(ctx) {
 }
 
 async function runProbe() {
-  console.log(`\n[PROBE] target=${MODEL_ID} repeats=${REPEATS}`);
+  console.log(`\n[PROBE] target=${MODEL_ID} mode=${MODE} repeats=${REPEATS}`);
 
   const baseline = await runCase('baseline_non_stream', {}, { stream: false });
   const baselineSummary = summarizeResults(baseline);
@@ -320,29 +342,42 @@ async function runProbe() {
 
   if (!strict) {
     if (baselineReasoning) {
-      rootOff = await runCase('root_off', { enable_thinking: false }, { stream: false });
+      rootOff = await runCase('root_off', { enable_thinking: false }, { stream: false, repeats: MODE === 'quick' ? 1 : REPEATS });
       await sleep(SLEEP_MS);
-      kwargsThinkingOff = await runCase('kwargs_thinking_off', { chat_template_kwargs: { thinking: false } }, { stream: false });
-      await sleep(SLEEP_MS);
-      kwargsEnableOff = await runCase('kwargs_enable_off', { chat_template_kwargs: { enable_thinking: false } }, { stream: false });
+      kwargsThinkingOff = await runCase('kwargs_thinking_off', { chat_template_kwargs: { thinking: false } }, { stream: false, repeats: MODE === 'quick' ? 1 : REPEATS });
+      if (MODE === 'full') {
+        await sleep(SLEEP_MS);
+        kwargsEnableOff = await runCase('kwargs_enable_off', { chat_template_kwargs: { enable_thinking: false } }, { stream: false });
+      }
 
       rootOffDisabled = summarizeResults(rootOff).acceptedMajority && !summarizeResults(rootOff).reasoningMajority;
-      kwargsThinkingOffDisabled = summarizeResults(kwargsThinkingOff).acceptedMajority && !summarizeResults(kwargsThinkingOff).reasoningMajority;
-      kwargsEnableOffDisabled = summarizeResults(kwargsEnableOff).acceptedMajority && !summarizeResults(kwargsEnableOff).reasoningMajority;
+      kwargsThinkingOffDisabled = kwargsThinkingOff.length > 0
+        ? (summarizeResults(kwargsThinkingOff).acceptedMajority && !summarizeResults(kwargsThinkingOff).reasoningMajority)
+        : false;
+      kwargsEnableOffDisabled = kwargsEnableOff.length > 0
+        ? (summarizeResults(kwargsEnableOff).acceptedMajority && !summarizeResults(kwargsEnableOff).reasoningMajority)
+        : false;
     } else {
       rootOn = await runCase('root_on', { enable_thinking: true }, { stream: false });
       await sleep(SLEEP_MS);
-      kwargsThinkingOn = await runCase('kwargs_thinking_on', { chat_template_kwargs: { thinking: true } }, { stream: false });
-      await sleep(SLEEP_MS);
-      kwargsEnableOn = await runCase('kwargs_enable_on', { chat_template_kwargs: { enable_thinking: true } }, { stream: false });
+      kwargsThinkingOn = await runCase('kwargs_thinking_on', { chat_template_kwargs: { thinking: true } }, { stream: false, repeats: MODE === 'quick' ? 1 : REPEATS });
+      if (MODE === 'full') {
+        await sleep(SLEEP_MS);
+        kwargsEnableOn = await runCase('kwargs_enable_on', { chat_template_kwargs: { enable_thinking: true } }, { stream: false });
+      }
 
       rootOnReasoning = summarizeResults(rootOn).acceptedMajority && summarizeResults(rootOn).reasoningMajority;
-      kwargsThinkingOnReasoning = summarizeResults(kwargsThinkingOn).acceptedMajority && summarizeResults(kwargsThinkingOn).reasoningMajority;
-      kwargsEnableOnReasoning = summarizeResults(kwargsEnableOn).acceptedMajority && summarizeResults(kwargsEnableOn).reasoningMajority;
+      kwargsThinkingOnReasoning = kwargsThinkingOn.length > 0
+        ? (summarizeResults(kwargsThinkingOn).acceptedMajority && summarizeResults(kwargsThinkingOn).reasoningMajority)
+        : false;
+      kwargsEnableOnReasoning = kwargsEnableOn.length > 0
+        ? (summarizeResults(kwargsEnableOn).acceptedMajority && summarizeResults(kwargsEnableOn).reasoningMajority)
+        : false;
     }
   }
 
   const recommendation = deriveStrategy({
+    mode: MODE,
     strict,
     baselineReasoning,
     rootOnReasoning,
@@ -366,6 +401,7 @@ async function runProbe() {
   const report = {
     generatedAt: nowIso(),
     modelId: MODEL_ID,
+    mode: MODE,
     repeats: REPEATS,
     strict,
     baselineReasoning,
@@ -389,17 +425,55 @@ async function runProbe() {
   const reportPath = path.join(process.cwd(), reportName);
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8');
 
+  let comparison = null;
+  const prefix = `probe-report-${slugifyModelId(MODEL_ID)}-`;
+  const candidates = fs
+    .readdirSync(process.cwd())
+    .filter((name) => name.startsWith(prefix) && name.endsWith('.json') && name !== reportName)
+    .sort();
+  const previous = candidates[candidates.length - 1];
+  if (previous) {
+    try {
+      const previousPath = path.join(process.cwd(), previous);
+      const previousReport = JSON.parse(fs.readFileSync(previousPath, 'utf-8'));
+      comparison = {
+        previousReport: previous,
+        strategyChanged: previousReport?.recommendation?.strategy !== report.recommendation.strategy,
+        strictnessChanged: previousReport?.strict !== report.strict,
+        reasoningChanged: previousReport?.baselineReasoning !== report.baselineReasoning,
+        regressionRisk:
+          (previousReport?.recommendation?.strategy !== report.recommendation.strategy) ||
+          (previousReport?.strict !== report.strict) ||
+          (previousReport?.baselineReasoning !== report.baselineReasoning),
+      };
+    } catch {
+      comparison = null;
+    }
+  }
+
   console.log('\n[ANALYSIS]');
   console.log(`- strict: ${strict ? 'yes' : 'no'}`);
   console.log(`- reasoning detected (non-stream): ${baselineReasoning ? 'yes' : 'no'}`);
   console.log(`- reasoning detected (stream): ${baselineStreamSummary.reasoningMajority ? 'yes' : 'no'}`);
   console.log(`- suggested strategy: ${recommendation.strategy}`);
   console.log(`- notes: ${recommendation.notes}`);
+  if (comparison) {
+    console.log('\n[COMPARE]');
+    console.log(`- previous: ${comparison.previousReport}`);
+    console.log(`- strategy changed: ${comparison.strategyChanged ? 'yes' : 'no'}`);
+    console.log(`- strictness changed: ${comparison.strictnessChanged ? 'yes' : 'no'}`);
+    console.log(`- baseline reasoning changed: ${comparison.reasoningChanged ? 'yes' : 'no'}`);
+    console.log(`- regression risk: ${comparison.regressionRisk ? 'yes' : 'no'}`);
+  }
   console.log('\n[RECOMMENDED lib/models.ts ENTRY]');
   console.log(configSnippet);
   if (recommendation.strategy !== 'none') {
     console.log('\n[MODEL_STRATEGIES MAP]');
     console.log(`'${MODEL_ID}': '${recommendation.strategy}'`);
+  }
+  if (comparison) {
+    report.comparison = comparison;
+    fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8');
   }
   console.log(`\n[REPORT] ${reportPath}`);
 }
