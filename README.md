@@ -90,7 +90,24 @@ ModelScope 拥有繁荣的文生图模型生态。由于模型众多，我们采
 
 ### 📝 更新日志
 
-#### v1.1 [2026.03.03]
+#### v1.2 [2026.03.03]
+
+**✨ 新特性 (Features)**
+*   **统一参考图入口升级**：VLM 与 AIGC 输入区新增左侧图标式参考图入口，点击后展开 URL / 本地上传双通道，上传路径更直觉。
+*   **最小回归链路落地**：新增 `scripts/smoke.mjs`，可在发布前一键验证 chat + image 关键链路可用性。
+*   **探针模式增强**：`scripts/probe.mjs` 增加 `quick/full` 双模式，并支持同模型历史报告对比输出。
+
+**🚀 优化与重构 (Improvements)**
+*   **API 配置中心化**：新增 `lib/config.ts`，将限流、超时、Body 大小与重试参数迁移为环境变量可配置。
+*   **流式会话能力复用**：抽离共享 NDJSON 解析与 session runner（Chat / Vision 复用），减少重复实现并提升一致性。
+*   **AIGC 稳定性增强**：图像任务轮询升级为退避策略（3s → 5s → 8s），并加入任务总超时与刷新恢复机制。
+*   **模型策略抽象升级**：在保持兼容的前提下引入最小 `ModelProfile` 结构，便于后续策略扩展与自动化接入。
+
+**🐛 漏洞修复 (Bug Fixes)**
+*   **请求可观测性补齐**：为 chat / vision / image API 全链路增加 `requestId`（响应头 + 日志串联），加速线上问题定位。
+*   **探针误判修复**：修复 quick 模式下思考策略可能误判为 `native_always_on` 的问题，提升新模型探测准确性。
+
+#### v1.1 [2026.03.02]
 
 **✨ 新特性 (Features)**
 *   **模型生态升级**：全面更新预设模型列表，接入最新 SOTA 模型（DeepSeek V3.2, GLM-5, MiniMax M2.5, Kimi K2.5, Qwen3.5）。
@@ -137,18 +154,82 @@ npm run dev
 
 打开浏览器访问 `http://localhost:3000`。
 
+#### 本地环境变量（推荐）
+
+在项目根目录创建 `.env.local`：
+
+```bash
+# ModelScope Access Token（用于 probe/smoke，本地使用）
+MS_API_KEY=ms-xxxxxxxxxxxxxxxx
+
+# 可选：API 阈值配置（不填则使用默认值）
+PRISM_CHAT_RATE_MAX=30
+PRISM_CHAT_TIMEOUT_MS=45000
+PRISM_VISION_RATE_MAX=20
+PRISM_VISION_TIMEOUT_MS=60000
+PRISM_IMAGE_GENERATE_RATE_MAX=10
+PRISM_IMAGE_GENERATE_TIMEOUT_MS=30000
+PRISM_IMAGE_STATUS_RATE_MAX=120
+PRISM_IMAGE_STATUS_TIMEOUT_MS=20000
+```
+
+#### 发布前最小验证（build + smoke）
+
+确保本地开发服务已启动（`npm run dev`）后，另开终端执行：
+
+```bash
+# 1) 编译检查
+npm run build
+
+# 2) 最小链路检查（chat + image generate + image status）
+npm run smoke
+```
+
+可选参数：
+
+```bash
+# 指定本地服务地址（默认 http://localhost:3000）
+SMOKE_BASE_URL=http://localhost:3000 npm run smoke
+
+# 指定测试模型
+SMOKE_CHAT_MODEL=Qwen/Qwen3.5-397B-A17B SMOKE_IMAGE_MODEL=Qwen/Qwen-Image npm run smoke
+```
+
+#### 模型探测（Probe）
+
+```bash
+# full 模式（默认）
+npm run probe -- Qwen/Qwen3.5-397B-A17B
+
+# quick 模式（更快，采样更少）
+npm run probe -- Qwen/Qwen3.5-397B-A17B quick
+
+# 指定 full + repeats
+npm run probe -- Qwen/Qwen3.5-397B-A17B full 2
+```
+
+探测报告会输出到项目根目录 `probe-report-*.json`，并自动尝试与同模型上一份报告做能力变化对比。
+
 #### 项目核心结构
-*   **`app/api/`**: 后端 API 路由 (Edge/Node.js Runtime)
-    *   `chat/route.ts`: 处理 LLM 流式对话，包含手动 SSE 解析逻辑以支持 `reasoning_content` (思考字段)。
-    *   `image/`: 处理 AIGC 绘图请求与任务状态轮询。
-*   **`components/`**: UI 组件库
-    *   `chat/`: LLM 模块专用组件 (气泡、Markdown 渲染)。
-    *   `image/`: AIGC 模块专用组件 (画板、参数面板、LoRA 管理)。
-    *   `vision/`: VLM 模块专用组件。
-    *   `layout/`: 全局布局 (侧边栏、Dock 栏)。
-*   **`lib/`**: 工具与状态
-    *   `store.ts`: 基于 Zustand 的全局状态管理，实现了 `persist` 本地持久化逻辑。
-    *   `models.ts`: 模型列表配置与 Thinking 模式策略定义。
+*   **`app/api/`**: 后端 API 路由层（Node/Edge Runtime）
+    *   `chat/route.ts`、`vision/route.ts`：处理 LLM / VLM 流式请求。
+    *   `image/generate/route.ts`、`image/status/[taskId]/route.ts`：处理 AIGC 任务提交与状态轮询。
+*   **`components/`**: 视图与交互组件层
+    *   `chat/`、`vision/`、`image/`：三大功能模块 UI。
+    *   `shared/`：跨模块复用组件（如 `reference-image-input.tsx`、Markdown 渲染器、设置弹窗）。
+    *   `layout/`、`ui/`：布局容器与基础 UI 组件。
+*   **`hooks/`**: 可复用前端流程逻辑
+    *   `use-ndjson-stream.ts`：统一 NDJSON 流式解析。
+    *   `use-stream-session-runner.ts`：统一会话请求、停止与错误处理。
+*   **`lib/`**: 领域能力与基础设施
+    *   `store.ts`：基于 Zustand + IndexedDB 的全局状态持久化。
+    *   `models.ts`：模型系列、策略与最小 `ModelProfile` 配置。
+    *   `config.ts`：限流/超时/Body 大小等阈值配置中心（支持环境变量）。
+    *   `api-security.ts`：API 安全工具（限流、超时、错误脱敏、requestId 等）。
+    *   `services/`：前端 API 调用封装（如 `chat-service.ts`）。
+*   **`scripts/`**: 自动化验证与探测
+    *   `smoke.mjs`：发布前最小链路验证（chat + image）。
+    *   `probe.mjs`：模型能力探测（quick/full、历史报告对比）。
 
 ---
 

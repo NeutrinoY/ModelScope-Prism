@@ -89,7 +89,24 @@ To accommodate varying parameter compatibility across models, we designed a **Ba
 
 ### 📝 Changelog
 
-#### v1.1 [2026.03.03]
+#### v1.2 [2026.03.03]
+
+**✨ Features**
+*   **Unified Reference Image Entry**: Added a left-icon reference image trigger in both VLM and AIGC input bars. Click to expand URL upload and local upload in one place.
+*   **Minimal Regression Pipeline**: Added `scripts/smoke.mjs` for pre-release one-command validation of the critical chat + image paths.
+*   **Probe Mode Upgrade**: Enhanced `scripts/probe.mjs` with `quick/full` modes and historical report comparison for the same model.
+
+**🚀 Improvements & Refactoring**
+*   **Centralized API Config**: Introduced `lib/config.ts` and moved rate-limit, timeout, body-size, and retry thresholds to env-driven configuration.
+*   **Shared Streaming Session Layer**: Extracted reusable NDJSON parser and session runner for Chat/Vision to reduce duplicated logic and improve behavior consistency.
+*   **AIGC Stability Upgrade**: Replaced fixed polling with backoff polling (3s → 5s → 8s), plus total timeout control and refresh-resume for in-progress tasks.
+*   **Model Strategy Abstraction**: Introduced a minimal `ModelProfile` structure while preserving backward compatibility.
+
+**🐛 Bug Fixes**
+*   **Request Observability**: Added end-to-end `requestId` propagation (response header + server logs) across chat/vision/image APIs for faster incident tracing.
+*   **Probe Misclassification Fix**: Fixed a quick-mode edge case where reasoning strategy could be incorrectly classified as `native_always_on`.
+
+#### v1.1 [2026.03.02]
 
 **✨ Features**
 *   **Model Ecosystem Upgrade**: Comprehensively updated the preset model list with the latest SOTA models (DeepSeek V3.2, GLM-5, MiniMax M2.5, Kimi K2.5, Qwen3.5).
@@ -137,17 +154,25 @@ npm run dev
 Open your browser and visit `http://localhost:3000`.
 
 #### Core Project Structure
-*   **`app/api/`**: Backend API Routes (Edge/Node.js Runtime)
-    *   `chat/route.ts`: Handles LLM streaming chat, including manual SSE parsing for `reasoning_content`.
-    *   `image/`: Handles AIGC generation requests and status polling.
-*   **`components/`**: UI Component Library
-    *   `chat/`: LLM specific components (Bubbles, Markdown Renderer).
-    *   `image/`: AIGC specific components (Canvas, Control Panel, LoRA Manager).
-    *   `vision/`: VLM specific components.
-    *   `layout/`: Global layout (Sidebar, Dock).
-*   **`lib/`**: Utilities & State
-    *   `store.ts`: Zustand-based global state management with `persist` for local storage.
-    *   `models.ts`: Model list configuration and Thinking Mode strategies.
+*   **`app/api/`**: Backend route layer (Node/Edge Runtime)
+    *   `chat/route.ts`, `vision/route.ts`: Streaming endpoints for LLM/VLM.
+    *   `image/generate/route.ts`, `image/status/[taskId]/route.ts`: AIGC task submission and status polling.
+*   **`components/`**: View and interaction layer
+    *   `chat/`, `vision/`, `image/`: UI modules for the three core capabilities.
+    *   `shared/`: Cross-module reusable components (e.g. `reference-image-input.tsx`, Markdown renderer, settings modal).
+    *   `layout/`, `ui/`: Layout containers and base UI primitives.
+*   **`hooks/`**: Reusable frontend flow logic
+    *   `use-ndjson-stream.ts`: Unified NDJSON stream parser.
+    *   `use-stream-session-runner.ts`: Unified request/abort/error flow for streaming sessions.
+*   **`lib/`**: Domain and infrastructure utilities
+    *   `store.ts`: Global state persistence with Zustand + IndexedDB.
+    *   `models.ts`: Model series, strategy mapping, and minimal `ModelProfile`.
+    *   `config.ts`: Centralized thresholds (rate limit, timeout, payload size) via env config.
+    *   `api-security.ts`: API security utilities (rate limiting, timeout, error sanitization, requestId).
+    *   `services/`: Frontend API call wrappers (e.g. `chat-service.ts`).
+*   **`scripts/`**: Automation and validation
+    *   `smoke.mjs`: Pre-release minimal chain validation (chat + image).
+    *   `probe.mjs`: Model capability probing (`quick/full` + historical report comparison).
 
 ---
 

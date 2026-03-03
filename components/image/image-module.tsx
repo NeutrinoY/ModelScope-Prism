@@ -22,6 +22,11 @@ import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import Masonry from 'react-masonry-css'
+import { ReferenceImageInput } from "@/components/shared/reference-image-input"
+
+const ACTIVE_IMAGE_TASK_KEY = "msp_active_image_task_v1"
+const POLL_DELAYS_MS = [3000, 5000, 8000]
+const MAX_POLL_DURATION_MS = 3 * 60 * 1000
 
 const RESOLUTION_PRESETS = [
   "1024x1024",
@@ -38,6 +43,15 @@ interface LoraItem {
   weight: number
 }
 
+interface ActiveImageTask {
+  taskId: string
+  sessionId: string
+  prompt: string
+  model: string
+  size: string
+  startedAt: number
+}
+
 export function ImageModule() {
   const { 
     apiKey, 
@@ -52,6 +66,7 @@ export function ImageModule() {
   // Generation State
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
+  const [imageEditUrl, setImageEditUrl] = useState('')
   const [sizePreset, setSizePreset] = useState('1024x1024')
   const [customW, setCustomW] = useState(1024)
   const [customH, setCustomH] = useState(1024)
@@ -67,7 +82,7 @@ export function ImageModule() {
   
   // UI State
   const [isGenerating, setIsGenerating] = useState(false)
-  const [taskId, setTaskId] = useState<string | null>(null)
+  const [activeTask, setActiveTask] = useState<ActiveImageTask | null>(null)
   const [showSettings, setShowSettings] = useState(true)
   const [viewingImage, setViewingImage] = useState<GeneratedImage | null>(null)
 
@@ -75,7 +90,6 @@ export function ImageModule() {
   const gallery = (currentSession?.type === 'image' ? (currentSession.data as ImageSessionData).images : []) as GeneratedImage[]
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -156,50 +170,128 @@ export function ImageModule() {
   const totalWeight = loraItems.reduce((acc, cur) => acc + cur.weight, 0)
   const isWeightValid = Math.abs(totalWeight - 1.0) < 0.02 || loraItems.length === 0
 
-  // Polling Logic
+  const clearActiveTask = useCallback(() => {
+    setActiveTask(null)
+    setIsGenerating(false)
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(ACTIVE_IMAGE_TASK_KEY)
+    }
+  }, [])
+
+  const persistActiveTask = useCallback((task: ActiveImageTask) => {
+    setActiveTask(task)
+    setIsGenerating(true)
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(ACTIVE_IMAGE_TASK_KEY, JSON.stringify(task))
+    }
+  }, [])
+
   useEffect(() => {
-    if (taskId && isGenerating && activeSessionId) {
-      pollTimerRef.current = setInterval(async () => {
+    if (typeof window === "undefined" || activeTask) return
+    const raw = window.sessionStorage.getItem(ACTIVE_IMAGE_TASK_KEY)
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw) as ActiveImageTask
+      if (
+        typeof parsed.taskId === "string" &&
+        typeof parsed.sessionId === "string" &&
+        typeof parsed.prompt === "string" &&
+        typeof parsed.model === "string" &&
+        typeof parsed.size === "string" &&
+        typeof parsed.startedAt === "number"
+      ) {
+        const age = Date.now() - parsed.startedAt
+        if (age < MAX_POLL_DURATION_MS) {
+          setActiveTask(parsed)
+          setIsGenerating(true)
+          toast.info("Resumed previous image task")
+        } else {
+          window.sessionStorage.removeItem(ACTIVE_IMAGE_TASK_KEY)
+        }
+      }
+    } catch {
+      window.sessionStorage.removeItem(ACTIVE_IMAGE_TASK_KEY)
+    }
+  }, [activeTask])
+
+  // Polling logic with backoff + timeout.
+  useEffect(() => {
+    if (!activeTask || !apiKey) return
+
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const finishWithSuccess = (imageUrl: string) => {
+      const state = useAppStore.getState()
+      const targetSession = state.sessions[activeTask.sessionId]
+      const existingImages =
+        targetSession?.type === 'image'
+          ? ((targetSession.data as ImageSessionData).images as GeneratedImage[])
+          : []
+
+      const newImage: GeneratedImage = {
+        id: crypto.randomUUID(),
+        url: imageUrl,
+        prompt: activeTask.prompt,
+        model: activeTask.model,
+        createdAt: Date.now(),
+        size: activeTask.size
+      }
+
+      updateSessionData(activeTask.sessionId, { images: [newImage, ...existingImages] })
+      toast.success("Image generated successfully!")
+      clearActiveTask()
+    }
+
+    const schedulePoll = (attempt: number) => {
+      const delay = POLL_DELAYS_MS[Math.min(attempt, POLL_DELAYS_MS.length - 1)]
+      timer = setTimeout(async () => {
+        if (cancelled) return
+
+        const elapsed = Date.now() - activeTask.startedAt
+        if (elapsed > MAX_POLL_DURATION_MS) {
+          toast.error("Image generation timed out. Please retry.")
+          clearActiveTask()
+          return
+        }
+
         try {
-          const res = await fetch(`/api/image/status/${taskId}?apiKey=${apiKey}`)
+          const res = await fetch(`/api/image/status/${activeTask.taskId}`, {
+            headers: { Authorization: `Bearer ${apiKey}` }
+          })
           const data = await res.json()
-          
+
           if (data.task_status === 'SUCCEED') {
-             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-             setIsGenerating(false)
-             setTaskId(null)
-             
-             if (data.output_images && data.output_images.length > 0) {
-               const finalSize = sizePreset === 'custom' ? `${customW}x${customH}` : sizePreset
-               const newImage: GeneratedImage = {
-                 id: crypto.randomUUID(),
-                 url: data.output_images[0],
-                 prompt: prompt, 
-                 model: imageModelId,
-                 createdAt: Date.now(),
-                 size: finalSize
-               }
-               updateSessionData(activeSessionId, { 
-                 images: [newImage, ...gallery] 
-               })
-               toast.success("Image generated successfully!")
-             }
-          } else if (data.task_status === 'FAILED') {
-             if (pollTimerRef.current) clearInterval(pollTimerRef.current)
-             setIsGenerating(false)
-             setTaskId(null)
-             toast.error("Image generation failed.")
+            if (Array.isArray(data.output_images) && data.output_images.length > 0) {
+              finishWithSuccess(data.output_images[0])
+            } else {
+              toast.error("Image generation finished but no image returned.")
+              clearActiveTask()
+            }
+            return
           }
+
+          if (data.task_status === 'FAILED') {
+            toast.error("Image generation failed.")
+            clearActiveTask()
+            return
+          }
+
+          schedulePoll(attempt + 1)
         } catch (e) {
           console.error("Polling error", e)
+          schedulePoll(attempt + 1)
         }
-      }, 3000)
+      }, delay)
     }
-    
+
+    schedulePoll(0)
+
     return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+      cancelled = true
+      if (timer) clearTimeout(timer)
     }
-  }, [taskId, isGenerating, apiKey, imageModelId, prompt, activeSessionId, gallery, updateSessionData, sizePreset, customW, customH])
+  }, [activeTask, apiKey, clearActiveTask, updateSessionData])
 
   const handleSubmit = async () => {
     if (!prompt.trim() || isGenerating) return
@@ -251,6 +343,7 @@ export function ImageModule() {
         model: imageModelId,
         apiKey
       }
+      if (imageEditUrl.trim()) payload.image_url = imageEditUrl.trim()
 
       if (useAdvancedParams) {
         payload.steps = steps
@@ -269,7 +362,15 @@ export function ImageModule() {
       
       const data = await res.json()
       if (data.task_id) {
-        setTaskId(data.task_id)
+        const nextTask: ActiveImageTask = {
+          taskId: data.task_id,
+          sessionId: sessionId!,
+          prompt,
+          model: imageModelId,
+          size: finalSize,
+          startedAt: Date.now()
+        }
+        persistActiveTask(nextTask)
         toast.info("Task submitted, generating...")
       } else if (data.output_images) {
         const newImage: GeneratedImage = {
@@ -557,6 +658,7 @@ export function ImageModule() {
           <div className="max-w-3xl mx-auto flex flex-col gap-3">
             <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-1.5 shadow-2xl focus-within:border-primary/50 transition-all group">
                <div className="flex gap-2 items-end">
+                 <ReferenceImageInput compact value={imageEditUrl} onChange={setImageEditUrl} />
                  <textarea
                   ref={textareaRef}
                   value={prompt}

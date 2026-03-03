@@ -1,51 +1,133 @@
 import { NextRequest } from 'next/server';
 import { getModelStrategy } from '@/lib/models';
+import { apiConfig } from '@/lib/config';
+import {
+  attachRequestId,
+  applyRateLimit,
+  createRequestId,
+  extractApiKey,
+  fetchWithTimeout,
+  isAbortError,
+  jsonError,
+  parseJsonBody,
+  sanitizeUpstreamStatus,
+} from '@/lib/api-security';
 
 // export const runtime = 'edge';
 
-export async function POST(req: NextRequest) {
-  try {
-    const { messages, model, apiKey, enableThinking } = await req.json();
+type ChatMessage = {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+};
 
+type ChatBody = {
+  messages: unknown;
+  model?: unknown;
+  apiKey?: unknown;
+  enableThinking?: unknown;
+};
+
+function validateChatBody(body: ChatBody): {
+  ok: true;
+  messages: ChatMessage[];
+  model?: string;
+  enableThinking: boolean;
+} | {
+  ok: false;
+  response: Response;
+} {
+  if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 50) {
+    return { ok: false, response: jsonError('INVALID_MESSAGES', 'messages must contain 1 to 50 items.', 400) };
+  }
+
+  const parsed: ChatMessage[] = [];
+  for (const item of body.messages) {
+    if (!item || typeof item !== 'object') {
+      return { ok: false, response: jsonError('INVALID_MESSAGES', 'messages format is invalid.', 400) };
+    }
+    const role = (item as { role?: unknown }).role;
+    const content = (item as { content?: unknown }).content;
+    if (role !== 'user' && role !== 'assistant' && role !== 'system') {
+      return { ok: false, response: jsonError('INVALID_MESSAGES', 'message role is invalid.', 400) };
+    }
+    if (typeof content !== 'string' || content.length < 1 || content.length > 20000) {
+      return { ok: false, response: jsonError('INVALID_MESSAGES', 'message content length is invalid.', 400) };
+    }
+    parsed.push({ role, content });
+  }
+
+  const model = typeof body.model === 'string' ? body.model.trim() : undefined;
+  if (model && model.length > 120) {
+    return { ok: false, response: jsonError('INVALID_MODEL', 'model id is too long.', 400) };
+  }
+
+  const enableThinking = typeof body.enableThinking === 'boolean' ? body.enableThinking : false;
+
+  return { ok: true, messages: parsed, model, enableThinking };
+}
+
+export async function POST(req: NextRequest) {
+  const requestId = createRequestId(req);
+  const rateLimited = applyRateLimit(req, {
+    routeKey: 'chat',
+    max: apiConfig.chat.rateMax,
+    windowMs: apiConfig.chat.rateWindowMs,
+  });
+  if (rateLimited) return attachRequestId(rateLimited, requestId);
+
+  try {
+    const parsed = await parseJsonBody<ChatBody>(req, apiConfig.chat.maxBodyBytes);
+    if (!parsed.ok) return attachRequestId(parsed.response, requestId);
+
+    const validation = validateChatBody(parsed.data);
+    if (!validation.ok) return attachRequestId(validation.response, requestId);
+
+    const apiKey = extractApiKey(req, parsed.data.apiKey);
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'API Key is required' }), { status: 400 });
+      return jsonError('MISSING_API_KEY', 'API Key is required.', 400, { 'X-Request-Id': requestId });
     }
 
-    const currentModel = model || 'deepseek-ai/DeepSeek-V3.2';
+    const currentModel = validation.model || 'deepseek-ai/DeepSeek-V3.2';
     const strategy = getModelStrategy(currentModel);
 
     const payload: any = {
       model: currentModel,
-      messages,
+      messages: validation.messages,
       stream: true,
     };
 
     // Precision injection based on specific model capabilities.
     // This prevents strict models like MiniMax from rejecting requests with unknown parameters.
     if (strategy === 'root_boolean') {
-      payload.enable_thinking = enableThinking;
+      payload.enable_thinking = validation.enableThinking;
     } else if (strategy === 'kwargs_dict') {
       payload.chat_template_kwargs = { 
-        thinking: enableThinking,
-        enable_thinking: enableThinking // Fallback for older engines within kwargs
+        thinking: validation.enableThinking,
+        enable_thinking: validation.enableThinking // Fallback for older engines within kwargs
       };
     } else if (strategy === 'native_always_on') {
       // The model natively outputs reasoning content and is STRICT.
       // Do NOT inject any thinking parameters to avoid 400 Bad Request.
     }
 
-    const res = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+    const res = await fetchWithTimeout('https://api-inference.modelscope.cn/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(payload)
-    });
+    }, apiConfig.chat.timeoutMs);
 
     if (!res.ok) {
-       const errorText = await res.text();
-       return new Response(JSON.stringify({ error: `ModelScope API Error`, details: errorText }), { status: res.status });
+      const upstreamBody = await res.text();
+      console.error('[chat upstream]', requestId, res.status, upstreamBody.slice(0, 500));
+      return jsonError(
+        'UPSTREAM_ERROR',
+        'Model provider request failed.',
+        sanitizeUpstreamStatus(res.status),
+        { 'X-Request-Id': requestId }
+      );
     }
 
     const stream = new ReadableStream({
@@ -98,8 +180,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Request-Id': requestId,
+      }
+    });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    if (isAbortError(error)) {
+      return jsonError('UPSTREAM_TIMEOUT', 'Upstream request timed out.', 504, { 'X-Request-Id': requestId });
+    }
+    console.error('Chat API Error:', requestId, error);
+    return jsonError('INTERNAL_ERROR', 'Internal server error.', 500, { 'X-Request-Id': requestId });
   }
 }
