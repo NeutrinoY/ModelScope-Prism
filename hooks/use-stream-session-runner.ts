@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useRef, useState } from "react";
-import { useNdjsonStream } from "@/hooks/use-ndjson-stream";
+import { useCallback, useRef, useState } from 'react';
+import { useNdjsonStream } from '@/hooks/use-ndjson-stream';
 
 type StartStreamOptions = {
   request: (signal: AbortSignal) => Promise<Response>;
@@ -35,11 +35,11 @@ export function useStreamSessionRunner() {
         const response = await options.request(controller.signal);
         if (!response.ok) {
           const text = await response.text();
-          throw new Error(text || "Failed to connect to API");
+          throw new Error(text || 'Failed to connect to API');
         }
 
         const reader = response.body?.getReader();
-        if (!reader) throw new Error("No stream reader available");
+        if (!reader) throw new Error('No stream reader available');
 
         await readNdjsonStream(reader, {
           allowPlainTextFallback: options.allowPlainTextFallback,
@@ -47,8 +47,8 @@ export function useStreamSessionRunner() {
           onPlainText: options.onPlainText,
         });
       } catch (error: any) {
-        if (error?.name !== "AbortError") {
-          options.onError?.(error?.message || "Request failed");
+        if (error?.name !== 'AbortError') {
+          options.onError?.(error?.message || 'Request failed');
         }
       } finally {
         setIsLoading(false);

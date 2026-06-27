@@ -133,7 +133,7 @@ If you wish to run locally or contribute, follow these steps.
 
 #### Requirements
 *   Node.js 18+
-*   npm / pnpm / yarn
+*   pnpm
 
 #### Installation & Run
 
@@ -145,17 +145,17 @@ git clone https://github.com/NeutrinoY/ModelScope-Prism.git
 cd ModelScope-Prism
 
 # 3. Install dependencies
-npm install
+pnpm install
 
 # 4. Start development server
-npm run dev
+pnpm dev
 ```
 
 Open your browser and visit `http://localhost:3000`.
 
 #### Core Project Structure
 *   **`app/api/`**: Backend route layer (Node/Edge Runtime)
-    *   `chat/route.ts`, `vision/route.ts`: Streaming endpoints for LLM/VLM.
+    *   `conversation/route.ts`: Unified streaming endpoint for LLM/VLM.
     *   `image/generate/route.ts`, `image/status/[taskId]/route.ts`: AIGC task submission and status polling.
 *   **`components/`**: View and interaction layer
     *   `chat/`, `vision/`, `image/`: UI modules for the three core capabilities.
@@ -166,13 +166,30 @@ Open your browser and visit `http://localhost:3000`.
     *   `use-stream-session-runner.ts`: Unified request/abort/error flow for streaming sessions.
 *   **`lib/`**: Domain and infrastructure utilities
     *   `store.ts`: Global state persistence with Zustand + IndexedDB.
-    *   `models.ts`: Model series, strategy mapping, and minimal `ModelProfile`.
+    *   `model-capabilities.ts`: Model capability profiles, modality support, and thinking strategy mapping.
+    *   `modelscope/conversation.ts`: ModelScope OpenAI-compatible adapter powered by the OpenAI SDK.
+    *   `models.ts`: Compatibility facade for existing frontend model imports.
     *   `config.ts`: Centralized thresholds (rate limit, timeout, payload size) via env config.
     *   `api-security.ts`: API security utilities (rate limiting, timeout, error sanitization, requestId).
-    *   `services/`: Frontend API call wrappers (e.g. `chat-service.ts`).
+    *   `services/`: Frontend API call wrappers (e.g. `conversation-service.ts`).
 *   **`scripts/`**: Automation and validation
     *   `smoke.mjs`: Pre-release minimal chain validation (chat + image).
     *   `probe.mjs`: Model capability probing (`quick/full` + historical report comparison).
+
+#### Model Probe
+
+```bash
+# full mode (default)
+pnpm probe Qwen/Qwen3.5-397B-A17B
+
+# quick mode
+pnpm probe Qwen/Qwen3.5-397B-A17B quick
+
+# full mode with explicit repeats
+pnpm probe Qwen/Qwen3.5-397B-A17B full 2
+```
+
+Probe reports are written as `probe-report-*.json` in the project root. Each report includes per-case status codes, latency, content validity, reasoning detection, parse errors, error categories, historical comparison, and a ready-to-copy profile snippet for `lib/model-capabilities.ts`.
 
 ---
 

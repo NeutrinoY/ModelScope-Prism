@@ -134,7 +134,7 @@ ModelScope 拥有繁荣的文生图模型生态。由于模型众多，我们采
 
 #### 环境要求
 *   Node.js 18+
-*   npm / pnpm / yarn
+*   pnpm
 
 #### 安装与运行
 
@@ -146,10 +146,10 @@ git clone https://github.com/NeutrinoY/ModelScope-Prism.git
 cd ModelScope-Prism
 
 # 3. 安装依赖
-npm install
+pnpm install
 
 # 4. 启动开发服务器
-npm run dev
+pnpm dev
 ```
 
 打开浏览器访问 `http://localhost:3000`。
@@ -163,10 +163,8 @@ npm run dev
 MS_API_KEY=ms-xxxxxxxxxxxxxxxx
 
 # 可选：API 阈值配置（不填则使用默认值）
-PRISM_CHAT_RATE_MAX=30
-PRISM_CHAT_TIMEOUT_MS=45000
-PRISM_VISION_RATE_MAX=20
-PRISM_VISION_TIMEOUT_MS=60000
+PRISM_CONVERSATION_RATE_MAX=30
+PRISM_CONVERSATION_TIMEOUT_MS=60000
 PRISM_IMAGE_GENERATE_RATE_MAX=10
 PRISM_IMAGE_GENERATE_TIMEOUT_MS=30000
 PRISM_IMAGE_STATUS_RATE_MAX=120
@@ -175,44 +173,52 @@ PRISM_IMAGE_STATUS_TIMEOUT_MS=20000
 
 #### 发布前最小验证（build + smoke）
 
-确保本地开发服务已启动（`npm run dev`）后，另开终端执行：
+确保本地开发服务已启动（`pnpm dev`）后，另开终端执行：
 
 ```bash
-# 1) 编译检查
-npm run build
+# 1) Biome lint + 单元测试 + 编译检查
+pnpm check
+pnpm test
+pnpm build
 
-# 2) 最小链路检查（chat + image generate + image status）
-npm run smoke
+# 2) 最小链路检查（conversation + image generate + image status）
+pnpm smoke
 ```
 
 可选参数：
 
 ```bash
 # 指定本地服务地址（默认 http://localhost:3000）
-SMOKE_BASE_URL=http://localhost:3000 npm run smoke
+SMOKE_BASE_URL=http://localhost:3000 pnpm smoke
 
 # 指定测试模型
-SMOKE_CHAT_MODEL=Qwen/Qwen3.5-397B-A17B SMOKE_IMAGE_MODEL=Qwen/Qwen-Image npm run smoke
+SMOKE_CHAT_MODEL=Qwen/Qwen3.5-397B-A17B SMOKE_IMAGE_MODEL=Qwen/Qwen-Image pnpm smoke
 ```
 
 #### 模型探测（Probe）
 
 ```bash
 # full 模式（默认）
-npm run probe -- Qwen/Qwen3.5-397B-A17B
+pnpm probe Qwen/Qwen3.5-397B-A17B
 
 # quick 模式（更快，采样更少）
-npm run probe -- Qwen/Qwen3.5-397B-A17B quick
+pnpm probe Qwen/Qwen3.5-397B-A17B quick
 
 # 指定 full + repeats
-npm run probe -- Qwen/Qwen3.5-397B-A17B full 2
+pnpm probe Qwen/Qwen3.5-397B-A17B full 2
 ```
 
-探测报告会输出到项目根目录 `probe-report-*.json`，并自动尝试与同模型上一份报告做能力变化对比。
+探测报告会输出到项目根目录 `probe-report-*.json`，并自动尝试与同模型上一份报告做能力变化对比。报告包含每个探测 case 的状态码、延迟、内容有效性、reasoning 检出、解析错误与错误分类，并给出可复制到 `lib/model-capabilities.ts` 的 profile 片段。
+
+探测重点：
+*   **strictness**：模型是否拒绝未知参数。
+*   **thinking control**：是否支持 `enable_thinking` 或 `chat_template_kwargs`。
+*   **stream compatibility**：流式响应是否稳定输出 content / reasoning。
+*   **confidence**：根据模式、样本数和解析错误给出 high / medium / low 置信度。
 
 #### 项目核心结构
 *   **`app/api/`**: 后端 API 路由层（Node/Edge Runtime）
-    *   `chat/route.ts`、`vision/route.ts`：处理 LLM / VLM 流式请求。
+    *   `conversation/route.ts`：处理 LLM / VLM 统一流式请求。
     *   `image/generate/route.ts`、`image/status/[taskId]/route.ts`：处理 AIGC 任务提交与状态轮询。
 *   **`components/`**: 视图与交互组件层
     *   `chat/`、`vision/`、`image/`：三大功能模块 UI。
@@ -223,10 +229,12 @@ npm run probe -- Qwen/Qwen3.5-397B-A17B full 2
     *   `use-stream-session-runner.ts`：统一会话请求、停止与错误处理。
 *   **`lib/`**: 领域能力与基础设施
     *   `store.ts`：基于 Zustand + IndexedDB 的全局状态持久化。
-    *   `models.ts`：模型系列、策略与最小 `ModelProfile` 配置。
+    *   `model-capabilities.ts`：模型能力轮廓、模态支持与思考参数策略。
+    *   `modelscope/conversation.ts`：基于 OpenAI SDK 的 ModelScope 兼容接口适配层。
+    *   `models.ts`：兼容旧前端 import 的模型配置 facade。
     *   `config.ts`：限流/超时/Body 大小等阈值配置中心（支持环境变量）。
     *   `api-security.ts`：API 安全工具（限流、超时、错误脱敏、requestId 等）。
-    *   `services/`：前端 API 调用封装（如 `chat-service.ts`）。
+    *   `services/`：前端 API 调用封装（如 `conversation-service.ts`）。
 *   **`scripts/`**: 自动化验证与探测
     *   `smoke.mjs`：发布前最小链路验证（chat + image）。
     *   `probe.mjs`：模型能力探测（quick/full、历史报告对比）。

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useCallback } from "react";
+import { useCallback } from 'react';
 
 type StreamDelta = {
   c?: string;
@@ -17,7 +17,7 @@ export function useNdjsonStream() {
   const readNdjsonStream = useCallback(
     async (reader: ReadableStreamDefaultReader<Uint8Array>, options: ReadNdjsonOptions) => {
       const decoder = new TextDecoder();
-      let buffer = "";
+      let buffer = '';
 
       const emitPlainText = (text: string) => {
         if (!options.allowPlainTextFallback) return;
@@ -30,8 +30,8 @@ export function useNdjsonStream() {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           const trimmed = line.trim();

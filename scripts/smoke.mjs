@@ -40,7 +40,7 @@ function assert(condition, message) {
 }
 
 async function runChatSmoke() {
-  const result = await requestJson('/api/chat', {
+  const result = await requestJson('/api/conversation', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -54,7 +54,10 @@ async function runChatSmoke() {
   });
 
   assert(result.ok, `chat failed with status ${result.status}`);
-  assert(result.text.includes('"c"') || result.text.includes('"r"'), 'chat stream response format invalid');
+  assert(
+    result.text.includes('"c"') || result.text.includes('"r"'),
+    'chat stream response format invalid'
+  );
   return { status: result.status };
 }
 

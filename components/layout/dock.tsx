@@ -1,27 +1,22 @@
-"use client"
+'use client';
 
-import {
-  MotionValue,
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-} from "framer-motion"
-import { useRef } from "react"
-import { cn } from "@/lib/utils"
-import { useAppStore, type ModuleType } from "@/lib/store"
-import { MessageSquare, Image as ImageIcon, Eye, Settings } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { type MotionValue, motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import type { ComponentType } from 'react';
+import { useRef } from 'react';
+import { cn } from '@/lib/utils';
+import { useAppStore } from '@/lib/store';
+import { MessageSquare, Image as ImageIcon, Eye, Settings } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function Dock() {
-  const mouseX = useMotionValue(Infinity)
-  const { currentModule, setCurrentModule } = useAppStore()
+  const mouseX = useMotionValue(Infinity);
+  const { currentModule, setCurrentModule } = useAppStore();
 
   const items = [
     { id: 'chat', icon: MessageSquare, label: 'Chat (LLM)' },
     { id: 'vision', icon: Eye, label: 'Vision (VLM)' },
     { id: 'image', icon: ImageIcon, label: 'Studio (AIGC)' },
-  ] as const
+  ] as const;
 
   return (
     <TooltipProvider>
@@ -40,21 +35,21 @@ export function Dock() {
             onClick={() => setCurrentModule(item.id)}
           />
         ))}
-        
+
         <div className="h-10 w-[1px] bg-border/50 my-auto" />
-        
+
         <DockIcon
           mouseX={mouseX}
           icon={Settings}
           label="Settings"
           isActive={false}
           onClick={() => {
-            document.dispatchEvent(new CustomEvent('open-settings'))
+            document.dispatchEvent(new CustomEvent('open-settings'));
           }}
         />
       </motion.div>
     </TooltipProvider>
-  )
+  );
 }
 
 function DockIcon({
@@ -64,40 +59,46 @@ function DockIcon({
   isActive,
   onClick,
 }: {
-  mouseX: MotionValue
-  icon: any
-  label: string
-  isActive: boolean
-  onClick: () => void
+  mouseX: MotionValue;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLButtonElement>(null);
 
   const distance = useTransform(mouseX, (val) => {
-    const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 }
-    return val - bounds.x - bounds.width / 2
-  })
+    const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
+    return val - bounds.x - bounds.width / 2;
+  });
 
-  const widthSync = useTransform(distance, [-150, 0, 150], [40, 80, 40])
-  const width = useSpring(widthSync, { mass: 0.1, stiffness: 150, damping: 12 })
+  const widthSync = useTransform(distance, [-150, 0, 150], [40, 80, 40]);
+  const width = useSpring(widthSync, { mass: 0.1, stiffness: 150, damping: 12 });
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <motion.div
+        <motion.button
+          type="button"
           ref={ref}
           style={{ width }}
           onClick={onClick}
           className={cn(
-            "aspect-square w-10 cursor-pointer rounded-full flex items-center justify-center transition-colors",
-            isActive ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground"
+            'aspect-square w-10 cursor-pointer rounded-full flex items-center justify-center transition-colors',
+            isActive
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground'
           )}
         >
           <Icon className="h-5 w-5" />
-        </motion.div>
+        </motion.button>
       </TooltipTrigger>
-      <TooltipContent sideOffset={10} className="bg-black/80 text-white dark:bg-white/90 dark:text-black font-medium backdrop-blur-sm border-none">
+      <TooltipContent
+        sideOffset={10}
+        className="bg-black/80 text-white dark:bg-white/90 dark:text-black font-medium backdrop-blur-sm border-none"
+      >
         <p>{label}</p>
       </TooltipContent>
     </Tooltip>
-  )
+  );
 }

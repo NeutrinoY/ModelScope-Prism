@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 type RateLimitOptions = {
   max: number;
@@ -11,9 +11,7 @@ type RateLimitBucket = {
   resetAt: number;
 };
 
-type JsonParseResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; response: Response };
+type JsonParseResult<T> = { ok: true; data: T } | { ok: false; response: Response };
 
 const RATE_LIMIT_STORE_KEY = '__msp_rate_limit_store__';
 
@@ -24,7 +22,7 @@ function getRateLimitStore(): Map<string, RateLimitBucket> {
   if (!g[RATE_LIMIT_STORE_KEY]) {
     g[RATE_LIMIT_STORE_KEY] = new Map<string, RateLimitBucket>();
   }
-  return g[RATE_LIMIT_STORE_KEY]!;
+  return g[RATE_LIMIT_STORE_KEY];
 }
 
 function cleanupRateLimitStore(store: Map<string, RateLimitBucket>, now: number): void {
@@ -73,7 +71,10 @@ export function applyRateLimit(req: NextRequest, options: RateLimitOptions): Res
   return null;
 }
 
-export async function parseJsonBody<T>(req: NextRequest, maxBytes: number): Promise<JsonParseResult<T>> {
+export async function parseJsonBody<T>(
+  req: NextRequest,
+  maxBytes: number
+): Promise<JsonParseResult<T>> {
   const contentType = req.headers.get('content-type') || '';
   if (!contentType.toLowerCase().includes('application/json')) {
     return {
@@ -101,7 +102,12 @@ export async function parseJsonBody<T>(req: NextRequest, maxBytes: number): Prom
   }
 }
 
-export function jsonError(code: string, message: string, status: number, headers?: Record<string, string>): Response {
+export function jsonError(
+  code: string,
+  message: string,
+  status: number,
+  headers?: Record<string, string>
+): Response {
   return new Response(JSON.stringify({ error: { code, message } }), {
     status,
     headers: {
@@ -122,7 +128,11 @@ export function attachRequestId(response: Response, requestId: string): Response
   return response;
 }
 
-export async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+export async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -136,9 +146,6 @@ export function extractApiKey(req: NextRequest, bodyApiKey?: unknown): string {
   const authHeader = req.headers.get('authorization') || '';
   if (authHeader.startsWith('Bearer ')) {
     return authHeader.slice('Bearer '.length).trim();
-  }
-  if (authHeader.trim()) {
-    return authHeader.trim();
   }
   return typeof bodyApiKey === 'string' ? bodyApiKey.trim() : '';
 }
