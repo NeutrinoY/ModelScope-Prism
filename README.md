@@ -63,6 +63,7 @@
 
 #### 👁️ VLM 视觉理解
 *   **看图说话**：上传一张图片，询问 "图中有什么？" 或 "提取图中的文字"。
+*   **视觉思考模式**：支持在输入栏中直接切换思考模式，和 LLM 模块保持一致的推理展示体验。
 *   **自定义模型**：除了内置的 Qwen-VL，您也可以尝试其他支持 OpenAI 格式的多模态模型。
     *   👉 [查找更多多模态模型 (Image-to-Text)](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:image-text-to-text&type=tasks)
 
@@ -89,6 +90,42 @@ ModelScope 拥有繁荣的文生图模型生态。由于模型众多，我们采
 ---
 
 ### 📝 更新日志
+
+#### v1.4 [2026.07.08]
+
+**✨ 新特性 (Features)**
+*   **内置模型能力收敛**：根据 ModelScope 实测结果重整预设列表，仅保留 DeepSeek V4 Flash、DeepSeek V4 Pro、GLM-5.2、Qwen3.5 四个已确认可用模型，并为每个模型固定文本/视觉/思考/输出 token 能力画像。
+*   **LLM 多模态输入补齐**：LLM 模块新增图片输入入口，与 VLM 共用参考图组件；当模型不支持图片、仅支持远程 URL 或不支持本地上传时，前端会按能力画像自动禁用对应入口。
+*   **VLM 思考模式补齐**：视觉模块新增独立的 `visionThinkingIntent` 状态与输入栏思考开关，支持按模型能力切换 Auto / On / Off，并复用统一的 reasoning 展示链路。
+*   **流式模型探测升级**：探测链路收敛为符合产品场景的流式优先模式，自动识别 `enable_thinking`、`thinking.type`、`chat_template_kwargs`、`max_tokens` 与配额/上游不可用等关键兼容性信号。
+
+**🚀 优化与重构 (Improvements)**
+*   **模型能力策略轻量化**：将运行时多重 fallback 收敛为内置模型硬编码画像 + 自定义模型保守试探的组合，减少 Vercel 线上环境中的不可控探测成本。
+*   **三模块输入栏统一**：Chat、Vision、AIGC 的底部输入区统一为单行紧凑布局，参考图、参数、思考、发送/停止按钮在同一操作面内完成。
+*   **思考开关交互下沉**：将思考模式控制移动到发送框区域，并按模型能力展示 `Reasoning Active`、`Chat Mode`、`Thinking Auto` 等状态，减少顶部模型选择区的认知负担。
+*   **模型选择器视觉整理**：将模型能力标签整理为 `Text` / `Vision` 徽标，选中态统一为更克制的 secondary 背景，提升轻量对话页面的一致性。
+*   **前端风格规范补齐**：新增前端风格一致性设计说明，明确轻量对话页面的布局密度、组件边界和能力状态表达，便于后续 UI 迭代保持一致。
+
+**🐛 漏洞修复 (Bug Fixes)**
+*   **探测错误分类修复**：将 ModelScope `402 insufficient balance` 归类为 `quota_limited`，避免误判为模型不可用；同时增强流式 JSON 错误解析与 token cap 截断识别。
+*   **Qwen 视觉能力修正**：按实测结果将 Qwen3.5 标记为支持远程图片 URL、不支持 data URL 上传，避免前端放开不可用的本地图片上传路径。
+
+#### v1.3 [2026.06.27]
+
+**✨ 新特性 (Features)**
+*   **统一对话 API 落地**：将原 LLM 与 VLM 后端链路合并为 `app/api/conversation`，统一处理文本、图片、思考内容与流式输出。
+*   **最小回归链路落地**：新增 `scripts/smoke.mjs`，可在发布前验证 chat + image 关键链路可用性。
+*   **自动化黑盒探针**：新增模块化 probe 脚本结构，可面向任意 ModelScope 模型生成 JSON 诊断报告与 Markdown 能力概览。
+
+**🚀 优化与重构 (Improvements)**
+*   **ModelScope 适配层重构**：新增 `lib/modelscope/conversation.ts` 与 `conversation-service`，将 OpenAI-compatible 请求、NDJSON 解析和前端会话调用统一封装。
+*   **流式会话能力复用**：抽离共享 stream session runner，Chat / Vision 复用停止生成、错误处理和增量更新逻辑。
+*   **工具链与配置更新**：迁移至 pnpm lockfile 与 Biome 检查链路，并将限流、超时、Body 大小等 API 阈值集中到配置层。
+*   **AIGC 稳定性增强**：图像任务接口补齐 requestId、超时、限流和错误脱敏处理，提升线上问题定位与失败恢复能力。
+
+**🐛 漏洞修复 (Bug Fixes)**
+*   **本地存储溢出修复**：将底层状态管理从容量受限的 `localStorage` 迁移至异步 `IndexedDB`，解决多模态高清图片场景下的 `QuotaExceededError` 风险。
+*   **请求可观测性补齐**：为 chat / vision / image API 全链路增加 `requestId`（响应头 + 日志串联），加速线上问题定位。
 
 #### v1.2 [2026.03.03]
 

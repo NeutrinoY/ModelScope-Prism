@@ -276,7 +276,7 @@ export function Sidebar({ customTrigger }: SidebarProps) {
 
         <div className="p-4 border-t border-border/20 bg-muted/20">
           <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
-            ModelScope Prism v1.2
+            ModelScope Prism v1.4
           </p>
         </div>
       </SheetContent>

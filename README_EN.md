@@ -62,6 +62,7 @@ All your chat history and generated image links are **saved in your current brow
 
 #### 👁️ VLM Visual Understanding
 *   **Image Chat**: Upload an image and ask "What is in the picture?" or "Extract text from the image".
+*   **Vision Thinking Mode**: Toggle thinking directly from the input bar, with the same reasoning display experience as the LLM module.
 *   **Custom Models**: Besides the built-in Qwen-VL, you can try other multimodal models supporting OpenAI format.
     *   👉 [Find more Image-to-Text Models](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:image-text-to-text&type=tasks)
 
@@ -88,6 +89,42 @@ To accommodate varying parameter compatibility across models, we designed a **Ba
 ---
 
 ### 📝 Changelog
+
+#### v1.4 [2026.07.08]
+
+**✨ Features**
+*   **Built-in Model Capability Convergence**: Rebuilt the preset list from ModelScope probe results, keeping only four confirmed usable models: DeepSeek V4 Flash, DeepSeek V4 Pro, GLM-5.2, and Qwen3.5. Each model now has a fixed profile for text, vision, thinking, and output token behavior.
+*   **Multimodal Input in LLM Chat**: Added image input to the LLM module using the shared reference image component. The UI now disables unsupported entry points automatically when a model is text-only, URL-only, or does not support local image uploads.
+*   **VLM Thinking Mode**: Added a dedicated `visionThinkingIntent` state and composer-level thinking toggle for the Vision module, supporting Auto / On / Off behavior based on model capability while reusing the unified reasoning display path.
+*   **Streaming-first Model Probe**: Refined probing around the product's real streaming chat path, detecting `enable_thinking`, `thinking.type`, `chat_template_kwargs`, `max_tokens`, quota limits, and unavailable upstream providers.
+
+**🚀 Improvements & Refactoring**
+*   **Lighter Model Strategy**: Replaced broad runtime fallback behavior with fixed built-in model profiles plus conservative best-effort handling for custom model IDs, reducing unpredictable probing costs on Vercel.
+*   **Unified Single-row Composer**: Aligned Chat, Vision, and AIGC around a compact single-row input layout where reference image, parameters, thinking, and send/stop actions live in one control surface.
+*   **Composer-level Thinking Control**: Moved thinking controls into the message composer and surfaced capability-aware states such as `Reasoning Active`, `Chat Mode`, and `Thinking Auto`.
+*   **Cleaner Model Selector**: Reworked model capability labels into `Text` / `Vision` badges and unified the selected state with a more restrained secondary background.
+*   **Frontend Style Spec**: Added a frontend style consistency design note to keep future UI work aligned on layout density, component boundaries, and capability-state presentation.
+
+**🐛 Bug Fixes**
+*   **Probe Error Classification**: Classified ModelScope `402 insufficient balance` as `quota_limited` instead of model unavailable, and improved streaming JSON error parsing plus token-cap truncation detection.
+*   **Qwen Vision Capability Fix**: Updated Qwen3.5 to support remote image URLs while rejecting data URL uploads, preventing the UI from exposing an unsupported local-upload path.
+
+#### v1.3 [2026.06.27]
+
+**✨ Features**
+*   **Unified Conversation API**: Merged the former LLM and VLM backend paths into `app/api/conversation`, with one streaming endpoint for text, images, reasoning output, and incremental responses.
+*   **Minimal Regression Pipeline**: Added `scripts/smoke.mjs` for pre-release validation of the critical chat + image paths.
+*   **Automated Blackbox Probe**: Introduced a modular probe script that generates both JSON diagnostics and Markdown capability overviews for arbitrary ModelScope models.
+
+**🚀 Improvements & Refactoring**
+*   **ModelScope Adapter Refactor**: Added `lib/modelscope/conversation.ts` and `conversation-service` to centralize OpenAI-compatible requests, NDJSON parsing, and frontend session calls.
+*   **Shared Streaming Session Layer**: Extracted a reusable stream session runner so Chat and Vision share stop-generation, error handling, and incremental update behavior.
+*   **Tooling and Config Update**: Migrated to pnpm lockfiles and Biome checks, while centralizing rate limits, timeouts, and body-size thresholds in the config layer.
+*   **AIGC Stability Upgrade**: Added request IDs, timeouts, rate limiting, and sanitized error handling to image task APIs for better production diagnostics and recovery.
+
+**🐛 Bug Fixes**
+*   **Local Storage Overflow Fix**: Replaced capacity-limited `localStorage` with asynchronous `IndexedDB`, reducing `QuotaExceededError` risk for multimodal sessions with large images.
+*   **Request Observability**: Added end-to-end `requestId` propagation (response header + server logs) across chat, vision, and image APIs for faster incident tracing.
 
 #### v1.2 [2026.03.03]
 
