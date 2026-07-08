@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore, type Message, type ChatSessionData } from '@/lib/store';
-import { LLM_SERIES, type ThinkingIntent } from '@/lib/model-capabilities';
+import { getModelProfile, LLM_SERIES, type ThinkingIntent } from '@/lib/model-capabilities';
 import {
   Send,
   User,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MarkdownRenderer } from '@/components/shared/markdown-renderer';
+import { ReferenceImageInput } from '@/components/shared/reference-image-input';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -31,11 +32,12 @@ export function ChatModule() {
     activeSessionId,
     updateSessionData,
     createSession,
-    enableThinking,
     customThinkingIntent,
+    setCustomThinkingIntent,
   } = useAppStore();
 
   const [input, setInput] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [forceShowSelector, setForceShowSelector] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -63,6 +65,13 @@ export function ChatModule() {
   const messages = (
     currentSession?.type === 'chat' ? (currentSession.data as ChatSessionData).messages : []
   ) as Message[];
+  const profile = getModelProfile(chatModelId);
+  const allowImageUrl = profile.source === 'custom' || profile.input.imageUrl;
+  const allowImageDataUrl = profile.source === 'custom' || profile.input.imageDataUrl;
+  const imageDisabledReason =
+    profile.source === 'custom'
+      ? 'This custom model will be tried with image input.'
+      : `${profile.label} is profiled as text-only.`;
 
   const scrollToBottom = () => {
     // Only scroll if the user is already near the bottom (within 100px)
@@ -85,7 +94,14 @@ export function ChatModule() {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !selectedImage) || isLoading) return;
+    if (selectedImage) {
+      const isDataUrl = selectedImage.startsWith('data:image/');
+      if ((isDataUrl && !allowImageDataUrl) || (!isDataUrl && !allowImageUrl)) {
+        toast.error(imageDisabledReason);
+        return;
+      }
+    }
     if (!apiKey) {
       toast.error('Please set your API Key in settings first');
       document.dispatchEvent(new CustomEvent('open-settings'));
@@ -98,18 +114,27 @@ export function ChatModule() {
     }
     if (!sessionId) return;
 
-    const userMessage: Message = { role: 'user', content: input };
+    const userMessage: Message = selectedImage
+      ? {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: selectedImage } },
+            { type: 'text', text: input || 'Describe this image' },
+          ],
+        }
+      : { role: 'user', content: input };
     const updatedMessages = [...messages, userMessage];
     updateSessionData(sessionId, { messages: updatedMessages });
 
     setInput('');
+    setSelectedImage(null);
     setForceShowSelector(false);
 
     // Reasoning Logic
     const currentSeries = LLM_SERIES.find(
       (s) => s.instruct.id === chatModelId || s.thinking?.id === chatModelId
     );
-    let finalThinkingIntent: ThinkingIntent = enableThinking ? 'on' : 'off';
+    let finalThinkingIntent: ThinkingIntent = 'auto';
     if (currentSeries) {
       if (currentSeries.thinking?.strategy === 'native_always_on') {
         finalThinkingIntent = 'on';
@@ -172,9 +197,16 @@ export function ChatModule() {
     setChatModelId(series.instruct.id);
   };
 
-  const toggleReasoning = (e: React.MouseEvent, series: (typeof LLM_SERIES)[0]) => {
-    e.stopPropagation();
-    if (!series.thinking) return;
+  const toggleCurrentReasoning = () => {
+    if (isCustomModel) {
+      const nextIntent =
+        customThinkingIntent === 'auto' ? 'on' : customThinkingIntent === 'on' ? 'off' : 'auto';
+      setCustomThinkingIntent(nextIntent);
+      return;
+    }
+
+    const series = currentSeries;
+    if (!series?.thinking) return;
 
     if (series.thinking.strategy === 'native_always_on') {
       toast.info('This model natively outputs reasoning and cannot be turned off.');
@@ -197,6 +229,15 @@ export function ChatModule() {
         ? chatModelId === currentSeries.thinking?.id
         : !!presetThinking[currentSeries.key]
     : customThinkingIntent === 'on';
+  const thinkingStatusLabel = isCustomModel
+    ? customThinkingIntent === 'auto'
+      ? 'Thinking Auto'
+      : customThinkingIntent === 'on'
+        ? 'Try Thinking'
+        : 'Try No Thinking'
+    : isCurrentlyReasoning
+      ? 'Reasoning Active'
+      : 'Chat Mode';
 
   return (
     <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full relative overflow-hidden h-full">
@@ -215,12 +256,9 @@ export function ChatModule() {
                 <LayoutGroup>
                   {LLM_SERIES.map((series) => {
                     const isSelected = currentSeries?.key === series.key;
-                    const isAlwaysOn = series.thinking?.strategy === 'native_always_on';
-                    const isOn =
-                      isAlwaysOn ||
-                      (series.isIdSwitch
-                        ? isSelected && chatModelId === series.thinking?.id
-                        : !!presetThinking[series.key]);
+                    const seriesProfile = getModelProfile(series.instruct.id);
+                    const supportsImage =
+                      seriesProfile.input.imageUrl || seriesProfile.input.imageDataUrl;
                     return (
                       <button
                         type="button"
@@ -236,21 +274,9 @@ export function ChatModule() {
                         <span className="font-semibold z-10 truncate max-w-full px-1">
                           {series.name}
                         </span>
-                        {series.thinking && (
-                          <div
-                            onClick={(e) => toggleReasoning(e, series)}
-                            className={cn(
-                              'z-20 text-[8px] px-1.5 py-0.5 rounded-full border transition-all flex items-center gap-1',
-                              isOn
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-background/40 border-border/40 text-muted-foreground/70',
-                              isAlwaysOn ? 'opacity-80' : 'cursor-pointer hover:brightness-110'
-                            )}
-                          >
-                            <BrainCircuit className="h-2 w-2" />{' '}
-                            {isAlwaysOn ? 'Always On' : 'Reasoning'}
-                          </div>
-                        )}
+                        <span className="z-10 text-[8px] text-muted-foreground/70">
+                          {supportsImage ? 'Text + Image' : 'Text'}
+                        </span>
                         {isSelected && (
                           <motion.div
                             layoutId="act-bg"
@@ -300,11 +326,7 @@ export function ChatModule() {
                     )}
                   >
                     <BrainCircuit className="h-2.5 w-2.5" />
-                    {isCustomModel && customThinkingIntent === 'auto'
-                      ? 'Thinking Auto'
-                      : isCurrentlyReasoning
-                        ? 'Reasoning Active'
-                        : 'Chat Mode'}
+                    {thinkingStatusLabel}
                   </div>
                 </div>
                 <Button
@@ -376,7 +398,26 @@ export function ChatModule() {
                     </div>
                   )}
 
-                  <MarkdownRenderer content={msg.content as string} />
+                  {Array.isArray(msg.content) ? (
+                    <div className="space-y-3">
+                      {msg.content.map((item, idx) =>
+                        item.type === 'image_url' ? (
+                          <img
+                            key={idx}
+                            src={item.image_url.url}
+                            alt="Uploaded"
+                            className="max-w-full rounded-lg border border-border/50 shadow-sm"
+                          />
+                        ) : (
+                          <p key={idx} className="text-sm leading-relaxed">
+                            {item.text}
+                          </p>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <MarkdownRenderer content={msg.content as string} />
+                  )}
                 </div>
               </div>
             ))}
@@ -399,6 +440,15 @@ export function ChatModule() {
             onSubmit={handleSubmit}
             className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-2 shadow-2xl focus-within:border-primary/50 transition-all group flex items-end gap-2"
           >
+            <ReferenceImageInput
+              compact
+              value={selectedImage || ''}
+              onChange={(next) => setSelectedImage(next || null)}
+              uploadQuality={0.8}
+              allowUrl={allowImageUrl}
+              allowUpload={allowImageDataUrl}
+              disabledReason={imageDisabledReason}
+            />
             <textarea
               ref={textareaRef}
               value={input}
@@ -408,10 +458,26 @@ export function ChatModule() {
                 e.preventDefault();
                 handleSubmit();
               }}
-              placeholder="Message ModelScope..."
+              placeholder={selectedImage ? 'Ask about this image...' : 'Message ModelScope...'}
               rows={1}
               className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
             />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={toggleCurrentReasoning}
+              className={cn(
+                'h-9 shrink-0 rounded-xl px-2 text-[10px] gap-1 mb-0.5',
+                isCurrentlyReasoning
+                  ? 'bg-primary/10 text-primary hover:bg-primary/15'
+                  : 'text-muted-foreground hover:bg-muted'
+              )}
+              title={thinkingStatusLabel}
+            >
+              <BrainCircuit className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{thinkingStatusLabel}</span>
+            </Button>
             {isLoading ? (
               <Button
                 type="button"
@@ -425,7 +491,7 @@ export function ChatModule() {
               <Button
                 type="submit"
                 size="icon"
-                disabled={!input.trim()}
+                disabled={!input.trim() && !selectedImage}
                 className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5"
               >
                 <Send className="h-4 w-4" />

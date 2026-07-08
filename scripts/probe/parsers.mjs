@@ -3,88 +3,11 @@ export function classifyStatus(statusCode, parseError = null) {
   if (statusCode === 0) return 'network';
   if (statusCode === 408) return 'timeout';
   if (statusCode === 401 || statusCode === 403) return 'auth';
+  if (statusCode === 402) return 'rate_limit';
   if (statusCode === 429) return 'rate_limit';
   if (statusCode >= 500) return 'server';
   if (statusCode >= 400) return 'client';
   return null;
-}
-
-export function parseNonStreamResult(statusCode, body) {
-  let json = null;
-  let parseError = null;
-  try {
-    json = JSON.parse(body);
-  } catch {
-    parseError = 'INVALID_JSON';
-  }
-
-  if (!json) {
-    return {
-      statusCode,
-      mode: 'non_stream',
-      accepted: false,
-      validContent: false,
-      hasReasoning: false,
-      contentLength: 0,
-      reasoningLength: 0,
-      finishReason: null,
-      contentPreview: '',
-      reasoningPreview: '',
-      rawLength: body.length,
-      rawPreview: body.slice(0, 500),
-      parseError,
-      errorMessage: null,
-      errorCategory: classifyStatus(statusCode, parseError),
-    };
-  }
-  const errorMessage = parseErrorMessage(json);
-
-  const choices = json.choices;
-  if (statusCode === 200 && (!Array.isArray(choices) || choices.length === 0)) {
-    return {
-      statusCode: 400,
-      mode: 'non_stream',
-      accepted: false,
-      validContent: false,
-      hasReasoning: false,
-      contentLength: 0,
-      reasoningLength: 0,
-      finishReason: null,
-      contentPreview: '',
-      reasoningPreview: '',
-      rawLength: body.length,
-      rawPreview: body.slice(0, 500),
-      parseError: 'EMPTY_CHOICES',
-      errorMessage,
-      errorCategory: 'client',
-    };
-  }
-
-  const message = choices?.[0]?.message || {};
-  const finishReason =
-    typeof choices?.[0]?.finish_reason === 'string' ? choices[0].finish_reason : null;
-  const content = typeof message.content === 'string' ? message.content : '';
-  const reasoning = typeof message.reasoning_content === 'string' ? message.reasoning_content : '';
-  const usage = parseUsage(json.usage);
-
-  return {
-    statusCode,
-    mode: 'non_stream',
-    accepted: statusCode === 200,
-    validContent: content.trim().length > 0,
-    hasReasoning: reasoning.trim().length > 0,
-    contentLength: content.length,
-    reasoningLength: reasoning.length,
-    finishReason,
-    contentPreview: content.slice(0, 500),
-    reasoningPreview: reasoning.slice(0, 500),
-    rawLength: body.length,
-    rawPreview: statusCode === 200 ? '' : body.slice(0, 500),
-    usage,
-    parseError: null,
-    errorMessage,
-    errorCategory: classifyStatus(statusCode),
-  };
 }
 
 export function parseUsage(usage) {
@@ -116,6 +39,13 @@ export function parseErrorMessage(json) {
 }
 
 export function parseStreamResult(statusCode, raw) {
+  let errorMessage = null;
+  if (!raw.trim().startsWith('data:')) {
+    try {
+      errorMessage = parseErrorMessage(JSON.parse(raw));
+    } catch {}
+  }
+
   const lines = raw.split('\n');
   let contentLength = 0;
   let reasoningLength = 0;
@@ -142,9 +72,15 @@ export function parseStreamResult(statusCode, raw) {
         contentLength += delta.content.length;
         contentPreview = `${contentPreview}${delta.content}`.slice(0, 500);
       }
-      if (typeof delta.reasoning_content === 'string') {
-        reasoningLength += delta.reasoning_content.length;
-        reasoningPreview = `${reasoningPreview}${delta.reasoning_content}`.slice(0, 500);
+      const reasoning =
+        typeof delta.reasoning_content === 'string'
+          ? delta.reasoning_content
+          : typeof delta.reasoning === 'string'
+            ? delta.reasoning
+            : '';
+      if (reasoning) {
+        reasoningLength += reasoning.length;
+        reasoningPreview = `${reasoningPreview}${reasoning}`.slice(0, 500);
       }
       parsedChunks += 1;
     } catch {
@@ -169,6 +105,7 @@ export function parseStreamResult(statusCode, raw) {
     parsedChunks,
     parseErrors,
     parseError: parseErrors > 0 ? 'STREAM_CHUNK_PARSE_ERROR' : null,
+    errorMessage,
     errorCategory: parseErrors > 0 ? 'invalid_json' : classifyStatus(statusCode),
   };
 }

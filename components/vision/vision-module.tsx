@@ -37,6 +37,14 @@ export function VisionModule() {
   const [input, setInput] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const { isLoading, start, stop } = useStreamSessionRunner();
+  const profile = getModelProfile(visionModelId);
+  const allowImageUrl = profile.source === 'custom' || profile.input.imageUrl;
+  const allowImageDataUrl = profile.source === 'custom' || profile.input.imageDataUrl;
+  const supportsAnyImage = allowImageUrl || allowImageDataUrl;
+  const imageDisabledReason =
+    profile.source === 'custom'
+      ? 'This custom model will be tried with image input.'
+      : `${profile.label} is profiled as text-only.`;
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +83,13 @@ export function VisionModule() {
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if ((!input.trim() && !selectedImage) || isLoading) return;
+    if (selectedImage) {
+      const isDataUrl = selectedImage.startsWith('data:image/');
+      if ((isDataUrl && !allowImageDataUrl) || (!isDataUrl && !allowImageUrl)) {
+        toast.error(imageDisabledReason);
+        return;
+      }
+    }
     if (!apiKey) {
       toast.error('Please set your API Key in settings first');
       document.dispatchEvent(new CustomEvent('open-settings'));
@@ -108,7 +123,6 @@ export function VisionModule() {
     setInput('');
     setSelectedImage(null);
 
-    const profile = getModelProfile(visionModelId);
     const thinkingIntent = profile.source === 'custom' ? customThinkingIntent : 'on';
 
     try {
@@ -176,7 +190,11 @@ export function VisionModule() {
                 </div>
                 <div>
                   <h2 className="text-xl font-medium">Vision Analyst</h2>
-                  <p className="text-sm">Describe, analyze, or read text from images</p>
+                  <p className="text-sm">
+                    {supportsAnyImage
+                      ? 'Describe, analyze, or read text from images'
+                      : 'Current model profile is text-only'}
+                  </p>
                   <p className="text-[10px] mt-2 font-mono uppercase tracking-widest">
                     {visionModelId.split('/').pop()}
                   </p>
@@ -280,13 +298,16 @@ export function VisionModule() {
               value={selectedImage || ''}
               onChange={(next) => setSelectedImage(next || null)}
               uploadQuality={0.8}
+              allowUrl={allowImageUrl}
+              allowUpload={allowImageDataUrl}
+              disabledReason={imageDisabledReason}
             />
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="What's in this image?"
+              placeholder={supportsAnyImage ? "What's in this image?" : 'Ask this model...'}
               rows={1}
               className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
             />

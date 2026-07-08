@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { BrainCircuit } from 'lucide-react';
-import type { ThinkingIntent } from '@/lib/model-capabilities';
+import { getModelProfile, type ThinkingIntent } from '@/lib/model-capabilities';
 
 export function SettingsModal() {
   const [open, setOpen] = useState(false);
@@ -66,6 +66,9 @@ export function SettingsModal() {
     toast.success('Settings saved');
   };
 
+  const localChatProfile = getModelProfile(localChatId);
+  const localVisionProfile = getModelProfile(localVisionId);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="w-[95vw] sm:max-w-[500px] overflow-y-auto max-h-[85vh] p-4 md:p-6 rounded-xl">
@@ -109,8 +112,13 @@ export function SettingsModal() {
               id="chat-model"
               value={localChatId}
               onChange={(e) => setLocalChatId(e.target.value)}
-              placeholder="e.g. deepseek-ai/DeepSeek-V3.2"
+              placeholder="e.g. deepseek-ai/DeepSeek-V4-Flash"
             />
+            <p className="text-[10px] text-muted-foreground">
+              {localChatProfile.source === 'custom'
+                ? 'Unknown profile: Prism sends conservative defaults until this model is added as a built-in profile.'
+                : 'Built-in profile: request parameters are fixed from the local capability map.'}
+            </p>
 
             {/* Custom Model Thinking Intent */}
             <div className="space-y-2 pt-1">
@@ -139,7 +147,8 @@ export function SettingsModal() {
                 ))}
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Custom models use a compatibility fallback if thinking controls are rejected.
+                Auto sends no thinking parameter for custom models. Try On/Off attempts a control
+                and retries with the model default if rejected.
               </p>
             </div>
           </div>
@@ -153,6 +162,13 @@ export function SettingsModal() {
               onChange={(e) => setLocalVisionId(e.target.value)}
               placeholder="e.g. Qwen/Qwen3-VL-235B-A22B-Instruct"
             />
+            <p className="text-[10px] text-muted-foreground">
+              {localVisionProfile.source === 'custom'
+                ? 'Unknown profile: image URL and upload inputs are allowed as a direct trial.'
+                : localVisionProfile.input.imageUrl || localVisionProfile.input.imageDataUrl
+                  ? 'Built-in profile: image inputs are enabled for this model.'
+                  : 'Built-in profile: this model is text-only, so image inputs are disabled.'}
+            </p>
           </div>
 
           {/* Image Settings */}

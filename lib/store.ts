@@ -104,7 +104,7 @@ export const useAppStore = create<AppState>()(
       currentModule: 'chat',
       setCurrentModule: (currentModule) => set({ currentModule }),
 
-      chatModelId: 'deepseek-ai/DeepSeek-V3.2',
+      chatModelId: 'deepseek-ai/DeepSeek-V4-Flash',
       setChatModelId: (chatModelId) => set({ chatModelId }),
 
       visionModelId: 'Qwen/Qwen3.5-397B-A17B',

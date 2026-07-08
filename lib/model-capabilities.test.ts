@@ -24,9 +24,8 @@ const remoteImageMessage = {
   ],
 };
 
-const availableChatStream = {
+const availableChat = {
   chat: true,
-  stream: true,
   status: 'available' as const,
 };
 const textInput = {
@@ -37,7 +36,7 @@ const textInput = {
 
 describe('model capabilities', () => {
   it('rejects image messages for text-only models', () => {
-    const profile = getModelProfile('deepseek-ai/DeepSeek-V3.2');
+    const profile = getModelProfile('deepseek-ai/DeepSeek-V4-Flash');
 
     expect(() => assertModelSupportsMessages(profile, [imageMessage])).toThrow(
       'does not support image data URL input'
@@ -47,10 +46,13 @@ describe('model capabilities', () => {
     );
   });
 
-  it('allows image messages for multimodal models', () => {
+  it('allows supported image URLs for multimodal models', () => {
     const profile = getModelProfile('Qwen/Qwen3.5-397B-A17B');
 
-    expect(() => assertModelSupportsMessages(profile, [imageMessage])).not.toThrow();
+    expect(() => assertModelSupportsMessages(profile, [remoteImageMessage])).not.toThrow();
+    expect(() => assertModelSupportsMessages(profile, [imageMessage])).toThrow(
+      'does not support image data URL input'
+    );
   });
 
   it('does not block image messages for custom models', () => {
@@ -75,7 +77,7 @@ describe('model capabilities', () => {
   it('injects provider-specific thinking params only when the profile supports them', () => {
     expect(
       buildModelScopeChatPayload({
-        model: 'deepseek-ai/DeepSeek-V3.2',
+        model: 'deepseek-ai/DeepSeek-V4-Flash',
         messages: [textMessage],
         thinkingIntent: 'on',
       })
@@ -83,7 +85,7 @@ describe('model capabilities', () => {
 
     expect(
       buildModelScopeChatPayload({
-        model: 'MiniMax/MiniMax-M2.5',
+        model: 'ZhipuAI/GLM-5.2',
         messages: [textMessage],
         thinkingIntent: 'on',
       })
@@ -116,7 +118,7 @@ describe('model capabilities', () => {
       provider: 'Provider',
       source: 'builtin',
       modalities: ['text'],
-      availability: availableChatStream,
+      availability: availableChat,
       input: textInput,
       thinking: { control: 'thinking_object', defaultEnabled: true, canDisable: true },
       output: { maxTokenParam: 'none', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
@@ -138,7 +140,7 @@ describe('model capabilities', () => {
       provider: 'Provider',
       source: 'builtin',
       modalities: ['text'],
-      availability: availableChatStream,
+      availability: availableChat,
       input: textInput,
       thinking: { control: 'none', defaultEnabled: false, canDisable: true },
       output: {

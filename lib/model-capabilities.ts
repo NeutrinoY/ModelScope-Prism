@@ -31,7 +31,6 @@ export type ModelProfile = {
   modalities: ModelModality[];
   availability: {
     chat: boolean;
-    stream: boolean;
     status: ModelAvailabilityStatus;
   };
   input: {
@@ -51,15 +50,13 @@ export type ModelProfile = {
   };
 };
 
-const AVAILABLE_CHAT_STREAM = {
+const AVAILABLE_CHAT = {
   chat: true,
-  stream: true,
   status: 'available' as const,
 };
 
 const UNKNOWN_CUSTOM_AVAILABILITY = {
   chat: true,
-  stream: true,
   status: 'unknown' as const,
 };
 
@@ -73,6 +70,12 @@ const TEXT_AND_IMAGE_INPUT = {
   text: true,
   imageUrl: true,
   imageDataUrl: true,
+};
+
+const TEXT_AND_IMAGE_URL_INPUT = {
+  text: true,
+  imageUrl: true,
+  imageDataUrl: false,
 };
 
 export type ModelSeries = {
@@ -92,8 +95,8 @@ export type ModelScopeChatPayload = {
   max_completion_tokens?: number;
   enable_thinking?: boolean;
   chat_template_kwargs?: {
-    thinking: boolean;
-    enable_thinking: boolean;
+    thinking?: boolean;
+    enable_thinking?: boolean;
   };
   thinking?: {
     type: 'enabled' | 'disabled';
@@ -101,100 +104,81 @@ export type ModelScopeChatPayload = {
 };
 
 export const MODEL_PROFILES: Record<string, ModelProfile> = {
-  'deepseek-ai/DeepSeek-V3.2': {
-    id: 'deepseek-ai/DeepSeek-V3.2',
-    label: 'DeepSeek V3.2',
-    provider: 'DeepSeek',
+  'deepseek-ai/DeepSeek-V4-Flash': {
+    id: 'deepseek-ai/DeepSeek-V4-Flash',
+    label: 'DeepSeek V4 Flash',
+    provider: 'deepseek-ai',
     source: 'builtin',
     modalities: ['text'],
-    availability: AVAILABLE_CHAT_STREAM,
+    availability: AVAILABLE_CHAT,
     input: TEXT_ONLY_INPUT,
-    thinking: { control: 'root_boolean', defaultEnabled: false, canDisable: true },
-    output: { maxTokenParam: 'none', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
+    thinking: { control: 'root_boolean', defaultEnabled: true, canDisable: true },
+    output: { maxTokenParam: 'max_tokens', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
   },
-  'ZhipuAI/GLM-5': {
-    id: 'ZhipuAI/GLM-5',
-    label: 'GLM 5',
+  'deepseek-ai/DeepSeek-V4-Pro': {
+    id: 'deepseek-ai/DeepSeek-V4-Pro',
+    label: 'DeepSeek V4 Pro',
+    provider: 'deepseek-ai',
+    source: 'builtin',
+    modalities: ['text'],
+    availability: AVAILABLE_CHAT,
+    input: TEXT_ONLY_INPUT,
+    thinking: { control: 'root_boolean', defaultEnabled: true, canDisable: true },
+    output: { maxTokenParam: 'max_tokens', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
+  },
+  'ZhipuAI/GLM-5.2': {
+    id: 'ZhipuAI/GLM-5.2',
+    label: 'GLM 5.2',
     provider: 'ZhipuAI',
     source: 'builtin',
     modalities: ['text'],
-    availability: AVAILABLE_CHAT_STREAM,
+    availability: AVAILABLE_CHAT,
     input: TEXT_ONLY_INPUT,
-    thinking: { control: 'root_boolean', defaultEnabled: false, canDisable: true },
-    output: { maxTokenParam: 'none', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
-  },
-  'MiniMax/MiniMax-M2.5': {
-    id: 'MiniMax/MiniMax-M2.5',
-    label: 'MiniMax M2.5',
-    provider: 'MiniMax',
-    source: 'builtin',
-    modalities: ['text'],
-    availability: AVAILABLE_CHAT_STREAM,
-    input: TEXT_ONLY_INPUT,
-    thinking: { control: 'native_always_on', defaultEnabled: true, canDisable: false },
-    output: { maxTokenParam: 'none', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
-  },
-  'moonshotai/Kimi-K2.5': {
-    id: 'moonshotai/Kimi-K2.5',
-    label: 'Kimi K2.5',
-    provider: 'Moonshot',
-    source: 'builtin',
-    modalities: ['text'],
-    availability: AVAILABLE_CHAT_STREAM,
-    input: TEXT_ONLY_INPUT,
-    thinking: { control: 'root_boolean', defaultEnabled: false, canDisable: true },
-    output: { maxTokenParam: 'none', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
+    thinking: { control: 'thinking_object', defaultEnabled: true, canDisable: true },
+    output: { maxTokenParam: 'max_tokens', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
   },
   'Qwen/Qwen3.5-397B-A17B': {
     id: 'Qwen/Qwen3.5-397B-A17B',
-    label: 'Qwen3.5 397B',
-    provider: 'Alibaba',
+    label: 'Qwen3.5 397B A17B',
+    provider: 'Qwen',
     source: 'builtin',
     modalities: ['text', 'image'],
-    availability: AVAILABLE_CHAT_STREAM,
-    input: TEXT_AND_IMAGE_INPUT,
-    thinking: { control: 'root_boolean', defaultEnabled: false, canDisable: true },
-    output: { maxTokenParam: 'none', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
+    availability: AVAILABLE_CHAT,
+    input: TEXT_AND_IMAGE_URL_INPUT,
+    thinking: { control: 'root_boolean', defaultEnabled: true, canDisable: true },
+    output: { maxTokenParam: 'max_tokens', defaultMaxTokens: 16_384, highMaxTokens: 65_536 },
   },
 };
 
 export const LLM_SERIES: ModelSeries[] = [
   {
-    key: 'deepseek-v3.2',
-    name: 'DeepSeek V3.2',
-    provider: 'DeepSeek',
+    key: 'deepseek-v4-flash',
+    name: 'DeepSeek V4 Flash',
+    provider: 'deepseek-ai',
     isIdSwitch: false,
-    instruct: { id: 'deepseek-ai/DeepSeek-V3.2', strategy: 'none' },
-    thinking: { id: 'deepseek-ai/DeepSeek-V3.2', strategy: 'root_boolean' },
+    instruct: { id: 'deepseek-ai/DeepSeek-V4-Flash', strategy: 'none' },
+    thinking: { id: 'deepseek-ai/DeepSeek-V4-Flash', strategy: 'root_boolean' },
   },
   {
-    key: 'glm-5',
-    name: 'GLM 5',
+    key: 'deepseek-v4-pro',
+    name: 'DeepSeek V4 Pro',
+    provider: 'deepseek-ai',
+    isIdSwitch: false,
+    instruct: { id: 'deepseek-ai/DeepSeek-V4-Pro', strategy: 'none' },
+    thinking: { id: 'deepseek-ai/DeepSeek-V4-Pro', strategy: 'root_boolean' },
+  },
+  {
+    key: 'glm-5.2',
+    name: 'GLM 5.2',
     provider: 'ZhipuAI',
     isIdSwitch: false,
-    instruct: { id: 'ZhipuAI/GLM-5', strategy: 'none' },
-    thinking: { id: 'ZhipuAI/GLM-5', strategy: 'root_boolean' },
-  },
-  {
-    key: 'minimax-m2.5',
-    name: 'MiniMax M2.5',
-    provider: 'MiniMax',
-    isIdSwitch: false,
-    instruct: { id: 'MiniMax/MiniMax-M2.5', strategy: 'none' },
-    thinking: { id: 'MiniMax/MiniMax-M2.5', strategy: 'native_always_on' },
-  },
-  {
-    key: 'kimi-k2.5',
-    name: 'Kimi K2.5',
-    provider: 'Moonshot',
-    isIdSwitch: false,
-    instruct: { id: 'moonshotai/Kimi-K2.5', strategy: 'none' },
-    thinking: { id: 'moonshotai/Kimi-K2.5', strategy: 'root_boolean' },
+    instruct: { id: 'ZhipuAI/GLM-5.2', strategy: 'none' },
+    thinking: { id: 'ZhipuAI/GLM-5.2', strategy: 'thinking_object' },
   },
   {
     key: 'qwen3.5-397b',
     name: 'Qwen3.5 397B',
-    provider: 'Alibaba',
+    provider: 'Qwen',
     isIdSwitch: false,
     instruct: { id: 'Qwen/Qwen3.5-397B-A17B', strategy: 'none' },
     thinking: { id: 'Qwen/Qwen3.5-397B-A17B', strategy: 'root_boolean' },

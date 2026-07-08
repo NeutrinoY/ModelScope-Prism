@@ -33,7 +33,6 @@ export function buildProfileSnippet({
 }) {
   const modalityText = modalities.map((modality) => `'${modality}'`).join(', ');
   const chat = availability?.chat === true;
-  const stream = availability?.stream === true;
   const status = availability?.status || 'unknown';
   const text = input?.text !== false;
   const imageUrl = input?.imageUrl === true;
@@ -49,7 +48,7 @@ export function buildProfileSnippet({
   provider: '${provider || inferProvider(modelId)}',
   source: 'builtin',
   modalities: [${modalityText}],
-  availability: { chat: ${chat}, stream: ${stream}, status: '${status}' },
+  availability: { chat: ${chat}, status: '${status}' },
   input: { text: ${text}, imageUrl: ${imageUrl}, imageDataUrl: ${imageDataUrl} },
   thinking: { control: '${control}', defaultEnabled: ${defaultEnabled}, canDisable: ${canDisable} },
   output: { maxTokenParam: '${maxTokenParam}', defaultMaxTokens: ${DEFAULT_MAX_TOKENS}, highMaxTokens: ${HIGH_MAX_TOKENS} },
@@ -60,7 +59,6 @@ export function buildReport(options) {
   const capability = options.capability || {
     availability: {
       chat: false,
-      stream: false,
       status: 'unavailable',
       latencyMs: null,
     },
@@ -117,7 +115,6 @@ export function buildMarkdownOverview(report) {
     '## Compatibility',
     '',
     `- Chat: ${capability.availability.chat ? 'yes' : 'no'}`,
-    `- Stream: ${capability.availability.stream ? 'yes' : 'no'}`,
     `- Status: ${capability.availability.status}`,
     `- Avg latency: ${capability.availability.latencyMs ?? 'unknown'}ms`,
     `- Image URL input: ${capability.input.imageUrl ? 'yes' : 'no'}`,

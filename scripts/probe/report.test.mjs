@@ -15,7 +15,6 @@ describe('probe report helpers', () => {
       modalities: ['text', 'image'],
       availability: {
         chat: true,
-        stream: true,
         status: 'available',
       },
       input: {
@@ -37,7 +36,7 @@ describe('probe report helpers', () => {
     expect(snippet).toContain("'Qwen/Qwen3.5-397B-A17B'");
     expect(snippet).toContain("source: 'builtin'");
     expect(snippet).toContain("modalities: ['text', 'image']");
-    expect(snippet).toContain("availability: { chat: true, stream: true, status: 'available' }");
+    expect(snippet).toContain("availability: { chat: true, status: 'available' }");
     expect(snippet).toContain('input: { text: true, imageUrl: true, imageDataUrl: true }');
     expect(snippet).toContain("control: 'root_boolean'");
     expect(snippet).toContain('defaultEnabled: true');
@@ -58,7 +57,7 @@ describe('probe report helpers', () => {
       generatedAt: '2026-06-24T00:00:00.000Z',
       modelId: 'Provider/Model',
       capability: {
-        availability: { chat: false, stream: false, status: 'unavailable' },
+        availability: { chat: false, status: 'unavailable' },
         input: { text: false, imageUrl: false, imageDataUrl: false },
         output: { maxTokenParam: 'none', preferredMaxTokens: null },
       },
@@ -70,7 +69,7 @@ describe('probe report helpers', () => {
       generatedAt: '2026-06-24T00:00:00.000Z',
       modelId: 'Provider/Model',
       capability: {
-        availability: { chat: true, stream: true, status: 'available', latencyMs: 123 },
+        availability: { chat: true, status: 'available', latencyMs: 123 },
         input: {
           text: true,
           imageUrl: false,

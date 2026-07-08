@@ -17,6 +17,9 @@ type ReferenceImageInputProps = {
   uploadQuality?: number;
   maxSizeMb?: number;
   compact?: boolean;
+  allowUrl?: boolean;
+  allowUpload?: boolean;
+  disabledReason?: string;
 };
 
 function isValidImageSource(value: string): boolean {
@@ -36,6 +39,9 @@ export function ReferenceImageInput({
   uploadQuality = 0.8,
   maxSizeMb = 10,
   compact = false,
+  allowUrl = true,
+  allowUpload = true,
+  disabledReason = 'Image input is not available for this model.',
 }: ReferenceImageInputProps) {
   const [urlDraft, setUrlDraft] = useState('');
   const [imagePreviewError, setImagePreviewError] = useState(false);
@@ -61,6 +67,11 @@ export function ReferenceImageInput({
       toast.error('Please enter an image URL');
       return;
     }
+    const isDataUrl = next.startsWith('data:image/');
+    if ((isDataUrl && !allowUpload) || (!isDataUrl && !allowUrl)) {
+      toast.error(disabledReason);
+      return;
+    }
     if (!isValidImageSource(next)) {
       toast.error('URL must be http(s) or data:image base64');
       return;
@@ -72,6 +83,12 @@ export function ReferenceImageInput({
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!allowUpload) {
+      toast.error(disabledReason);
+      e.target.value = '';
+      return;
+    }
+
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -102,6 +119,8 @@ export function ReferenceImageInput({
     setImagePreviewError(false);
   };
 
+  const canSelectImage = allowUrl || allowUpload;
+
   const panel = (
     <div
       className={cn(
@@ -122,7 +141,11 @@ export function ReferenceImageInput({
         )}
       </div>
 
-      {value ? (
+      {!canSelectImage && !value ? (
+        <div className="rounded-xl border border-border/50 bg-muted/30 px-4 py-5 text-center text-xs text-muted-foreground">
+          {disabledReason}
+        </div>
+      ) : value ? (
         <div className="relative rounded-xl overflow-hidden bg-muted/30 border border-border/50 aspect-video flex items-center justify-center">
           {!imagePreviewError ? (
             <img
@@ -139,28 +162,32 @@ export function ReferenceImageInput({
           )}
         </div>
       ) : (
-        <button
-          type="button"
-          className="border-2 border-dashed border-border/50 rounded-xl p-6 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/30 hover:border-primary/50 hover:text-primary transition-all cursor-pointer group"
-          onClick={() => imageFileInputRef.current?.click()}
-        >
-          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-            <UploadCloud className="h-5 w-5" />
-          </div>
-          <p className="text-xs font-medium mt-1">Click to upload image</p>
-          <p className="text-[10px] opacity-70">JPG, PNG, WEBP up to {maxSizeMb}MB</p>
-        </button>
+        allowUpload && (
+          <button
+            type="button"
+            className="border-2 border-dashed border-border/50 rounded-xl p-6 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/30 hover:border-primary/50 hover:text-primary transition-all cursor-pointer group"
+            onClick={() => imageFileInputRef.current?.click()}
+          >
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+              <UploadCloud className="h-5 w-5" />
+            </div>
+            <p className="text-xs font-medium mt-1">Click to upload image</p>
+            <p className="text-[10px] opacity-70">JPG, PNG, WEBP up to {maxSizeMb}MB</p>
+          </button>
+        )
       )}
 
-      {!value && (
+      {!value && allowUrl && (
         <>
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border/40" />
-            <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-widest">
-              OR
-            </span>
-            <div className="h-px flex-1 bg-border/40" />
-          </div>
+          {allowUpload && (
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border/40" />
+              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-widest">
+                OR
+              </span>
+              <div className="h-px flex-1 bg-border/40" />
+            </div>
+          )}
 
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -207,14 +234,16 @@ export function ReferenceImageInput({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
+        disabled={!canSelectImage}
         className={cn(
           'relative h-9 w-9 shrink-0 rounded-xl overflow-hidden transition-all border mb-0.5',
           value
             ? 'border-primary/40 shadow-sm'
             : 'border-transparent hover:bg-primary/10 hover:text-primary text-muted-foreground',
-          'grid place-items-center cursor-pointer group bg-background'
+          'grid place-items-center group bg-background',
+          canSelectImage ? 'cursor-pointer' : 'cursor-not-allowed opacity-45'
         )}
-        title="Reference image"
+        title={canSelectImage ? 'Reference image' : disabledReason}
       >
         {value && !imagePreviewError ? (
           <>

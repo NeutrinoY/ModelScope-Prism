@@ -1,5 +1,5 @@
 import https from 'node:https';
-import { parseNonStreamResult, parseStreamResult } from './parsers.mjs';
+import { parseStreamResult } from './parsers.mjs';
 
 export const MODELSCOPE_HOST = 'api-inference.modelscope.cn';
 export const CHAT_COMPLETIONS_PATH = '/v1/chat/completions';
@@ -15,14 +15,13 @@ export function makeModelScopeRequest({
   prompt,
   payloadName,
   payload,
-  stream,
   timeoutMs,
 }) {
   return new Promise((resolve) => {
     const requestBody = JSON.stringify({
       model: modelId,
       messages: messages || [{ role: 'user', content: prompt }],
-      stream,
+      stream: true,
       ...payload,
     });
 
@@ -46,12 +45,10 @@ export function makeModelScopeRequest({
         });
         res.on('end', () => {
           const statusCode = res.statusCode || 0;
-          const parsed = stream
-            ? parseStreamResult(statusCode, body)
-            : parseNonStreamResult(statusCode, body);
+          const parsed = parseStreamResult(statusCode, body);
           resolve({
             payloadName,
-            stream,
+            stream: true,
             durationMs: Date.now() - startedAt,
             ...parsed,
           });
@@ -67,10 +64,10 @@ export function makeModelScopeRequest({
       const isTimeout = error.message === 'REQUEST_TIMEOUT';
       resolve({
         payloadName,
-        stream,
+        stream: true,
         durationMs: Date.now() - startedAt,
         statusCode: 0,
-        mode: stream ? 'stream' : 'non_stream',
+        mode: 'stream',
         accepted: false,
         validContent: false,
         hasReasoning: false,

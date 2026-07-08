@@ -17,7 +17,7 @@
 
 ### ✨ Core Highlights
 
-- **🧠 Deep Thinking Mode**: Perfectly supports advanced models like **DeepSeek V3.2**, **GLM-5**, **MiniMax M2.5**, **Kimi K2.5**, and **Qwen3.5**. Enable it to natively display the **Chain of Thought (CoT)**, making the AI's reasoning process visible.
+- **🧠 Deep Thinking Mode**: Supports built-in models like **DeepSeek V4 Flash**, **DeepSeek V4 Pro**, **GLM-5.2**, and **Qwen3.5**. Enable it to natively display the **Chain of Thought (CoT)**, making the AI's reasoning process visible.
 - **🎨 AIGC Canvas**: More than just image generation—supports **LoRA Model Loading**, **CFG/Steps Fine-tuning**, **Custom Resolutions**, and an **Immersive Image Gallery**.
 - **👀 Multimodal Vision**: Supports visual models like **Qwen3-VL**, allowing you to upload images for in-depth Q&A and analysis.
 - **🔒 Data Privacy & Security**: Adheres to the **Local-First** principle. All chat history, Access Tokens, and settings are stored locally in your **browser (Local Storage)**. No data is uploaded to third-party servers other than direct calls to the ModelScope API.
@@ -109,7 +109,7 @@ To accommodate varying parameter compatibility across models, we designed a **Ba
 #### v1.1 [2026.03.02]
 
 **✨ Features**
-*   **Model Ecosystem Upgrade**: Comprehensively updated the preset model list with the latest SOTA models (DeepSeek V3.2, GLM-5, MiniMax M2.5, Kimi K2.5, Qwen3.5).
+*   **Model Ecosystem Upgrade**: Converged the preset model list to probed usable models: DeepSeek V4 Flash, DeepSeek V4 Pro, GLM-5.2, and Qwen3.5.
 *   **Automated Blackbox Probe**: Introduced `scripts/probe.mjs`, an automated testing script to dynamically sniff parameter strictness and reasoning capabilities of any new ModelScope model.
 *   **Enhanced Streaming Control**: Integrated native `AbortController` into both LLM and VLM modules. The send button now dynamically transforms into a "Stop Generation" button.
 *   **VLM Reasoning Collapse**: Refactored the VLM backend stream to NDJSON format, allowing the frontend to neatly extract and elegantly collapse the Chain of Thought (Reasoning) of modern multimodal models.
@@ -183,7 +183,7 @@ Open your browser and visit `http://localhost:3000`.
 pnpm probe Qwen/Qwen3.5-397B-A17B
 ```
 
-Probe reports are written to `probe-reports/`. Each probe writes two files: `probe-report-*.json` is the diagnostic report with per-case status codes, latency, content validity, reasoning detection, parse errors, error categories, and raw error previews; `probe-report-*.md` is the human-readable capability overview with chat, streaming, thinking control, vision input, output token parameter, and a ready-to-copy profile snippet for `lib/model-capabilities.ts`.
+Probe reports are written to `probe-reports/`. Each probe writes two files: `probe-report-*.json` is the diagnostic report with per-case status codes, latency, content validity, reasoning detection, parse errors, error categories, and raw error previews; `probe-report-*.md` is the human-readable capability overview with streaming chat, thinking control, vision input, output token parameter, and a ready-to-copy profile snippet for `lib/model-capabilities.ts`.
 
 ---
 

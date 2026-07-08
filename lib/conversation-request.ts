@@ -56,7 +56,7 @@ export const conversationBodySchema = z
       .array(z.union([userMessageSchema, textOnlyMessageSchema]))
       .min(1)
       .max(50),
-    model: z.string().trim().min(1).max(120).default('deepseek-ai/DeepSeek-V3.2'),
+    model: z.string().trim().min(1).max(120).default('deepseek-ai/DeepSeek-V4-Flash'),
     apiKey: z.string().optional(),
     enableThinking: z.boolean().optional(),
     thinkingIntent: z.enum(['auto', 'on', 'off']).optional(),

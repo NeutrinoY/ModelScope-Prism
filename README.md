@@ -18,7 +18,7 @@
 
 ### ✨ 核心亮点
 
-- **🧠 深度思考模式**：完美支持 **DeepSeek V3.2**、**GLM-5**、**MiniMax M2.5**、**Kimi K2.5**、**Qwen3.5** 等前沿模型，开启后可原生展示思维链（Chain of Thought），让 AI 的推理过程清晰可见。
+- **🧠 深度思考模式**：支持 **DeepSeek V4 Flash**、**DeepSeek V4 Pro**、**GLM-5.2**、**Qwen3.5** 等内置模型，开启后可原生展示思维链（Chain of Thought），让 AI 的推理过程清晰可见。
 - **🎨  AIGC 画板**：不仅是生成图片，更支持 **LoRA 模型加载**、**CFG/Steps 微调**、**自定义分辨率** 以及 **沉浸式图片浏览器**。
 - **👀 多模态视觉**：支持 **Qwen3-VL** 等视觉大模型，上传图片即可进行深度问答与分析。
 - **🔒 数据隐私安全**：秉持 Local-First 原则，所有对话记录、Access Token 和设置均存储在您的**浏览器本地 (Local Storage)**，除直连 ModelScope API 外，不会上传至任何第三方服务器。
@@ -110,7 +110,7 @@ ModelScope 拥有繁荣的文生图模型生态。由于模型众多，我们采
 #### v1.1 [2026.03.02]
 
 **✨ 新特性 (Features)**
-*   **模型生态升级**：全面更新预设模型列表，接入最新 SOTA 模型（DeepSeek V3.2, GLM-5, MiniMax M2.5, Kimi K2.5, Qwen3.5）。
+*   **模型生态升级**：收敛预设模型列表，保留已探测可用的 DeepSeek V4 Flash、DeepSeek V4 Pro、GLM-5.2、Qwen3.5。
 *   **自动化黑盒探针**：新增 `scripts/probe.mjs` 自动化测试脚本，可动态嗅探 ModelScope 平台任意新模型的传参限制与能力边界（支持双向拨动测试防 429 限流误判）。
 *   **终止生成控制**：LLM 与 VLM 模块均加入基于 `AbortController` 的打断功能，生成期间发送按钮动态切换为“停止”按钮，并静默处理中断异常。
 *   **VLM 推理折叠**：将 VLM（视觉多模态）模块的后端数据流重构为 NDJSON 结构，支持将最新多模态大模型的思维链（Reasoning）进行原生提取，并在前端实现与 LLM 模块一致的优雅折叠效果。
@@ -202,11 +202,10 @@ SMOKE_CHAT_MODEL=Qwen/Qwen3.5-397B-A17B SMOKE_IMAGE_MODEL=Qwen/Qwen-Image pnpm s
 pnpm probe Qwen/Qwen3.5-397B-A17B
 ```
 
-探测报告会输出到 `probe-reports/`。每次探测会生成两份文件：`probe-report-*.json` 是完整诊断，包含每个探测 case 的状态码、延迟、内容有效性、reasoning 检出、解析错误、错误分类和原始错误预览；`probe-report-*.md` 是面向人工阅读的能力概览，包含聊天、流式、思考开关、视觉输入、输出 token 参数和可复制到 `lib/model-capabilities.ts` 的 profile 片段。
+探测报告会输出到 `probe-reports/`。每次探测会生成两份文件：`probe-report-*.json` 是完整诊断，包含每个探测 case 的状态码、延迟、内容有效性、reasoning 检出、解析错误、错误分类和原始错误预览；`probe-report-*.md` 是面向人工阅读的能力概览，包含流式聊天、思考开关、视觉输入、输出 token 参数和可复制到 `lib/model-capabilities.ts` 的 profile 片段。
 
 探测重点：
-*   **chat availability**：模型是否能在 ModelScope OpenAI-compatible endpoint 上返回有效文本。
-*   **stream compatibility**：流式响应是否能稳定输出 content / reasoning。
+*   **chat availability**：模型是否能在 ModelScope OpenAI-compatible endpoint 的流式接口上返回有效文本。
 *   **thinking control**：是否支持 `enable_thinking`、`chat_template_kwargs` 或 `thinking.type`。
 *   **vision input**：是否支持远程图片 URL 或 data URL。
 *   **output token parameter**：优先确认 `max_tokens` 是否有效，无效时再尝试 `max_completion_tokens`。

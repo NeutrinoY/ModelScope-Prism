@@ -52,7 +52,6 @@ async function runCase(config, caseName, payload, options = {}) {
     prompt: options.prompt || THINKING_PROMPT,
     payloadName: caseName,
     payload,
-    stream: options.stream === true,
     timeoutMs: TIMEOUT_MS,
   });
 }
@@ -110,8 +109,9 @@ function visionSucceeded(result) {
 }
 
 function tokenParamEffective(result) {
-  if (!result.accepted || !result.validContent) return false;
+  if (!result.accepted) return false;
   if (result.finishReason === 'length') return true;
+  if (!result.validContent) return false;
   if (result.usage?.completionTokens && result.usage.completionTokens <= TOKEN_PROBE_CAP + 8) {
     return true;
   }
@@ -147,14 +147,13 @@ export async function runProbeCli(argv = process.argv, env = process.env) {
   const tests = {};
   let caseIndex = 1;
 
-  tests.baseline = await runCase(config, 'text_baseline', {}, { stream: false });
-  printCase(caseIndex++, 'text baseline', tests.baseline);
+  tests.baseline = await runCase(config, 'text_stream_baseline', {});
+  printCase(caseIndex++, 'text stream baseline', tests.baseline);
 
   if (!tests.baseline.accepted || !tests.baseline.validContent) {
     const capability = {
       availability: {
         chat: false,
-        stream: false,
         status: classifyAvailabilityStatus(tests.baseline),
         latencyMs: tests.baseline.durationMs || null,
       },
@@ -191,10 +190,6 @@ export async function runProbeCli(argv = process.argv, env = process.env) {
     console.log(`[OVERVIEW] ${overviewPath}`);
     return 1;
   }
-
-  await waitBetweenCases();
-  tests.stream = await runCase(config, 'text_stream', {}, { stream: true });
-  printCase(caseIndex++, 'text stream', tests.stream);
 
   const baselineReasoning = hasReasoning(tests.baseline);
 
@@ -294,9 +289,8 @@ export async function runProbeCli(argv = process.argv, env = process.env) {
   const capability = {
     availability: {
       chat: tests.baseline.accepted && tests.baseline.validContent,
-      stream: tests.stream.accepted && tests.stream.validContent,
       status: classifyAvailabilityStatus(tests.baseline),
-      latencyMs: tests.stream.durationMs || tests.baseline.durationMs || null,
+      latencyMs: tests.baseline.durationMs || null,
     },
     input: {
       text: tests.baseline.accepted && tests.baseline.validContent,
@@ -323,7 +317,6 @@ export async function runProbeCli(argv = process.argv, env = process.env) {
 
   console.log('\n[ANALYSIS]');
   console.log(`- chat: ${capability.availability.chat ? 'yes' : 'no'}`);
-  console.log(`- stream: ${capability.availability.stream ? 'yes' : 'no'}`);
   console.log(`- image URL: ${capability.input.imageUrl ? 'yes' : 'no'}`);
   console.log(`- image data URL: ${capability.input.imageDataUrl ? 'yes' : 'no'}`);
   console.log(`- thinking control: ${capability.thinking.control}`);

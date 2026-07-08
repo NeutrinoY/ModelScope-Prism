@@ -1,57 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseNonStreamResult, parseStreamResult, summarizeResults } from './parsers.mjs';
+import { parseStreamResult, summarizeResults } from './parsers.mjs';
 
 describe('probe parsers', () => {
-  it('parses non-stream content and reasoning diagnostics', () => {
-    const result = parseNonStreamResult(
-      200,
-      JSON.stringify({
-        choices: [
-          {
-            message: { content: 'answer', reasoning_content: 'thinking' },
-            finish_reason: 'stop',
-          },
-        ],
-        usage: {
-          prompt_tokens: 3,
-          completion_tokens: 5,
-          total_tokens: 8,
-          completion_tokens_details: { reasoning_tokens: 2 },
-        },
-      })
-    );
-
-    expect(result).toMatchObject({
-      accepted: true,
-      validContent: true,
-      hasReasoning: true,
-      contentLength: 6,
-      reasoningLength: 8,
-      finishReason: 'stop',
-      contentPreview: 'answer',
-      usage: {
-        promptTokens: 3,
-        completionTokens: 5,
-        totalTokens: 8,
-        reasoningTokens: 2,
-      },
-      errorCategory: null,
-    });
-  });
-
-  it('classifies invalid JSON without throwing', () => {
-    const result = parseNonStreamResult(200, 'not-json');
-
-    expect(result).toMatchObject({
-      accepted: false,
-      parseError: 'INVALID_JSON',
-      errorCategory: 'invalid_json',
-    });
-  });
-
   it('parses streamed SSE chunks and counts parse errors', () => {
     const raw = [
       'data: {"choices":[{"delta":{"reasoning_content":"step"}}]}',
+      'data: {"choices":[{"delta":{"reasoning":" two"}}]}',
       'data: {"choices":[{"delta":{"content":"ok"}}]}',
       'data: {"choices":[{"finish_reason":"length","delta":{}}]}',
       'data: {"choices":[],"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}',
@@ -66,7 +20,7 @@ describe('probe parsers', () => {
       validContent: true,
       hasReasoning: true,
       contentLength: 2,
-      reasoningLength: 4,
+      reasoningLength: 8,
       finishReason: 'length',
       contentPreview: 'ok',
       usage: {
@@ -74,8 +28,27 @@ describe('probe parsers', () => {
         completionTokens: 2,
         totalTokens: 3,
       },
-      parsedChunks: 3,
+      parsedChunks: 4,
       parseErrors: 1,
+    });
+  });
+
+  it('classifies streamed quota errors with the provider message', () => {
+    const result = parseStreamResult(
+      402,
+      JSON.stringify({
+        error: {
+          message: 'insufficient balance (1008)',
+          type: 'insufficient_balance_error',
+        },
+      })
+    );
+
+    expect(result).toMatchObject({
+      accepted: false,
+      validContent: false,
+      errorCategory: 'rate_limit',
+      errorMessage: 'insufficient balance (1008)',
     });
   });
 
