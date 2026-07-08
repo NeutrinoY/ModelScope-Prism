@@ -8,7 +8,9 @@
     "start": "next start",
     "check": "biome lint .",
     "format": "biome format --write .",
-    "typecheck": "tsc --noEmit"
+    "test": "vitest run",
+    "probe": "node scripts/probe.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.19",
@@ -27,10 +29,12 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-markdown": "^10.1.0",
+    "react-masonry-css": "^1.0.16",
     "react-syntax-highlighter": "^16.1.1",
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
+    "tailwindcss-animate": "^1.0.7",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
@@ -40,7 +44,9 @@
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "baseline-browser-mapping": "^2.10.42",
     "tailwindcss": "^4.3.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   }
 }

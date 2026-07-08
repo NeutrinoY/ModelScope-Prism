@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   async headers() {
     const isDev = process.env.NODE_ENV !== 'production';
     const csp = [
