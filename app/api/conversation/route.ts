@@ -11,7 +11,10 @@ import {
   sanitizeUpstreamStatus,
 } from '@/lib/api-security';
 import { apiConfig } from '@/lib/config';
-import { parseConversationRequestBody } from '@/lib/conversation-request';
+import {
+  parseConversationRequestBody,
+  resolveConversationThinkingIntent,
+} from '@/lib/conversation-request';
 import type { ConversationMessage } from '@/lib/model-capabilities';
 import { createModelScopeConversationStream } from '@/lib/modelscope/conversation';
 
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
       apiKey,
       model: body.data.model,
       messages: body.data.messages as ConversationMessage[],
-      enableThinking: body.data.enableThinking,
+      thinkingIntent: resolveConversationThinkingIntent(body.data),
       timeoutMs: apiConfig.conversation.timeoutMs,
       signal: req.signal,
     });
@@ -78,7 +81,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (error instanceof Error && error.message.includes('does not support image input')) {
+    if (error instanceof Error && error.message.includes('does not support image')) {
       return jsonError('UNSUPPORTED_MODEL_CAPABILITY', error.message, 400, {
         'X-Request-Id': requestId,
       });

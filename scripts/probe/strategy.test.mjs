@@ -1,54 +1,58 @@
 import { describe, expect, it } from 'vitest';
-import { deriveStrategy, getConfidenceLabel } from './strategy.mjs';
+import { deriveThinkingProfile } from './strategy.mjs';
 
-describe('probe strategy inference', () => {
-  it('detects strict always-on reasoning models', () => {
+describe('probe thinking strategy inference', () => {
+  it('detects always-on reasoning when disable controls do not work', () => {
     expect(
-      deriveStrategy({
-        mode: 'full',
-        strict: true,
+      deriveThinkingProfile({
         baselineReasoning: true,
+        rootOffDisabled: false,
+        kwargsOffDisabled: false,
+        thinkingTypeOffDisabled: false,
       })
     ).toMatchObject({
-      strategy: 'native_always_on',
-      confidence: 'high',
+      control: 'native_always_on',
+      defaultEnabled: true,
+      canDisable: false,
     });
   });
 
   it('prefers root boolean when it enables reasoning', () => {
     expect(
-      deriveStrategy({
-        mode: 'full',
-        strict: false,
+      deriveThinkingProfile({
         baselineReasoning: false,
         rootOnReasoning: true,
       })
     ).toMatchObject({
-      strategy: 'root_boolean',
-      confidence: 'high',
+      control: 'root_boolean',
+      defaultEnabled: false,
+      canDisable: true,
     });
   });
 
-  it('marks quick mode disable-path as lower confidence', () => {
+  it('detects kwargs disable strategy for default reasoning models', () => {
     expect(
-      deriveStrategy({
-        mode: 'quick',
-        strict: false,
+      deriveThinkingProfile({
         baselineReasoning: true,
-        rootOffDisabled: false,
-        kwargsThinkingOffDisabled: false,
+        kwargsOffDisabled: true,
       })
     ).toMatchObject({
-      strategy: 'none',
-      confidence: 'low',
+      control: 'kwargs_dict',
+      defaultEnabled: true,
+      canDisable: true,
     });
   });
 
-  it('labels confidence from sample health', () => {
-    expect(getConfidenceLabel({ mode: 'full', acceptedSamples: 4, parseErrors: 0 })).toBe('high');
-    expect(getConfidenceLabel({ mode: 'quick', acceptedSamples: 1, parseErrors: 0 })).toBe(
-      'medium'
-    );
-    expect(getConfidenceLabel({ mode: 'full', acceptedSamples: 0, parseErrors: 2 })).toBe('low');
+  it('detects top-level thinking object enable strategy', () => {
+    expect(
+      deriveThinkingProfile({
+        baselineReasoning: false,
+        thinkingTypeOnReasoning: true,
+      })
+    ).toMatchObject({
+      control: 'thinking_object',
+      defaultEnabled: false,
+      canDisable: true,
+    });
   });
 });

@@ -11,6 +11,7 @@ export function sleep(ms) {
 export function makeModelScopeRequest({
   apiKey,
   modelId,
+  messages,
   prompt,
   payloadName,
   payload,
@@ -20,7 +21,7 @@ export function makeModelScopeRequest({
   return new Promise((resolve) => {
     const requestBody = JSON.stringify({
       model: modelId,
-      messages: [{ role: 'user', content: prompt }],
+      messages: messages || [{ role: 'user', content: prompt }],
       stream,
       ...payload,
     });

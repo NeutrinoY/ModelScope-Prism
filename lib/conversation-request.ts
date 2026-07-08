@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ThinkingIntent } from '@/lib/model-capabilities';
 
 const MAX_IMAGE_URL_LENGTH = 12_000_000;
 const MAX_CONTENT_PARTS = 20;
@@ -57,7 +58,8 @@ export const conversationBodySchema = z
       .max(50),
     model: z.string().trim().min(1).max(120).default('deepseek-ai/DeepSeek-V3.2'),
     apiKey: z.string().optional(),
-    enableThinking: z.boolean().default(false),
+    enableThinking: z.boolean().optional(),
+    thinkingIntent: z.enum(['auto', 'on', 'off']).optional(),
   })
   .superRefine((body, ctx) => {
     const imageCount = body.messages.reduce((count, message) => {
@@ -78,4 +80,12 @@ export type ConversationRequestBody = z.infer<typeof conversationBodySchema>;
 
 export function parseConversationRequestBody(input: unknown) {
   return conversationBodySchema.safeParse(input);
+}
+
+export function resolveConversationThinkingIntent(
+  body: Pick<ConversationRequestBody, 'enableThinking' | 'thinkingIntent'>
+): ThinkingIntent {
+  if (body.thinkingIntent) return body.thinkingIntent;
+  if (body.enableThinking === undefined) return 'auto';
+  return body.enableThinking ? 'on' : 'off';
 }

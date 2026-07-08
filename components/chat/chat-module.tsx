@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore, type Message, type ChatSessionData } from '@/lib/store';
-import { LLM_SERIES } from '@/lib/model-capabilities';
+import { LLM_SERIES, type ThinkingIntent } from '@/lib/model-capabilities';
 import {
   Send,
   User,
@@ -32,6 +32,7 @@ export function ChatModule() {
     updateSessionData,
     createSession,
     enableThinking,
+    customThinkingIntent,
   } = useAppStore();
 
   const [input, setInput] = useState('');
@@ -108,15 +109,21 @@ export function ChatModule() {
     const currentSeries = LLM_SERIES.find(
       (s) => s.instruct.id === chatModelId || s.thinking?.id === chatModelId
     );
-    let finalEnableThinking = enableThinking;
+    let finalThinkingIntent: ThinkingIntent = enableThinking ? 'on' : 'off';
     if (currentSeries) {
       if (currentSeries.thinking?.strategy === 'native_always_on') {
-        finalEnableThinking = true;
+        finalThinkingIntent = 'on';
       } else {
-        finalEnableThinking = currentSeries.isIdSwitch
-          ? chatModelId === currentSeries.thinking?.id
-          : !!presetThinking[currentSeries.key];
+        finalThinkingIntent = (
+          currentSeries.isIdSwitch
+            ? chatModelId === currentSeries.thinking?.id
+            : !!presetThinking[currentSeries.key]
+        )
+          ? 'on'
+          : 'off';
       }
+    } else {
+      finalThinkingIntent = customThinkingIntent;
     }
 
     try {
@@ -129,7 +136,7 @@ export function ChatModule() {
               messages: updatedMessages,
               model: chatModelId,
               apiKey: apiKey,
-              enableThinking: finalEnableThinking,
+              thinkingIntent: finalThinkingIntent,
             },
             signal
           ),
@@ -148,6 +155,7 @@ export function ChatModule() {
             ],
           });
         },
+        onNotice: (notice) => toast.info(notice.message),
         onError: (message) => toast.error(message),
       });
     } catch (error: any) {
@@ -188,7 +196,7 @@ export function ChatModule() {
       : currentSeries.isIdSwitch
         ? chatModelId === currentSeries.thinking?.id
         : !!presetThinking[currentSeries.key]
-    : enableThinking;
+    : customThinkingIntent === 'on';
 
   return (
     <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full relative overflow-hidden h-full">
@@ -292,7 +300,11 @@ export function ChatModule() {
                     )}
                   >
                     <BrainCircuit className="h-2.5 w-2.5" />
-                    {isCurrentlyReasoning ? 'Reasoning Active' : 'Chat Mode'}
+                    {isCustomModel && customThinkingIntent === 'auto'
+                      ? 'Thinking Auto'
+                      : isCurrentlyReasoning
+                        ? 'Reasoning Active'
+                        : 'Chat Mode'}
                   </div>
                 </div>
                 <Button

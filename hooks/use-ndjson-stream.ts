@@ -5,12 +5,15 @@ import { useCallback } from 'react';
 type StreamDelta = {
   c?: string;
   r?: string;
+  n?: string;
+  code?: string;
 };
 
 type ReadNdjsonOptions = {
   allowPlainTextFallback?: boolean;
   onDelta: (delta: StreamDelta) => void;
   onPlainText?: (text: string) => void;
+  onNotice?: (notice: { message: string; code?: string }) => void;
 };
 
 export function useNdjsonStream() {
@@ -41,6 +44,8 @@ export function useNdjsonStream() {
             const parsed = JSON.parse(trimmed) as StreamDelta;
             if (parsed.c || parsed.r) {
               options.onDelta(parsed);
+            } else if (parsed.n) {
+              options.onNotice?.({ message: parsed.n, code: parsed.code });
             }
           } catch {
             emitPlainText(line);
@@ -55,6 +60,8 @@ export function useNdjsonStream() {
         const parsed = JSON.parse(finalChunk) as StreamDelta;
         if (parsed.c || parsed.r) {
           options.onDelta(parsed);
+        } else if (parsed.n) {
+          options.onNotice?.({ message: parsed.n, code: parsed.code });
         }
       } catch {
         emitPlainText(buffer);

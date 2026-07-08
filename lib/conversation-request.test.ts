@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseConversationRequestBody } from './conversation-request';
+import {
+  parseConversationRequestBody,
+  resolveConversationThinkingIntent,
+} from './conversation-request';
 
 const imagePart = { type: 'image_url', image_url: { url: 'data:image/png;base64,AA==' } };
 
@@ -30,5 +33,20 @@ describe('conversation request parsing', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('defaults missing thinking controls to auto', () => {
+    expect(resolveConversationThinkingIntent({})).toBe('auto');
+  });
+
+  it('keeps legacy enableThinking compatibility explicit', () => {
+    expect(resolveConversationThinkingIntent({ enableThinking: true })).toBe('on');
+    expect(resolveConversationThinkingIntent({ enableThinking: false })).toBe('off');
+  });
+
+  it('prefers explicit thinkingIntent over legacy enableThinking', () => {
+    expect(
+      resolveConversationThinkingIntent({ thinkingIntent: 'auto', enableThinking: true })
+    ).toBe('auto');
   });
 });

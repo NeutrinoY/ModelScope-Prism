@@ -8,8 +8,21 @@ type StartStreamOptions = {
   onDelta: (delta: { c?: string; r?: string }) => void;
   onPlainText?: (text: string) => void;
   allowPlainTextFallback?: boolean;
+  onNotice?: (notice: { message: string; code?: string }) => void;
   onError?: (message: string) => void;
 };
+
+async function readErrorMessage(response: Response): Promise<string> {
+  const text = await response.text();
+  if (!text) return 'Failed to connect to API';
+
+  try {
+    const parsed = JSON.parse(text) as { error?: { message?: string } };
+    return parsed.error?.message || text;
+  } catch {
+    return text;
+  }
+}
 
 export function useStreamSessionRunner() {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,8 +47,7 @@ export function useStreamSessionRunner() {
       try {
         const response = await options.request(controller.signal);
         if (!response.ok) {
-          const text = await response.text();
-          throw new Error(text || 'Failed to connect to API');
+          throw new Error(await readErrorMessage(response));
         }
 
         const reader = response.body?.getReader();
@@ -45,6 +57,7 @@ export function useStreamSessionRunner() {
           allowPlainTextFallback: options.allowPlainTextFallback,
           onDelta: options.onDelta,
           onPlainText: options.onPlainText,
+          onNotice: options.onNotice,
         });
       } catch (error: any) {
         if (error?.name !== 'AbortError') {

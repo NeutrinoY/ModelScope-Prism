@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import { get, set, del } from 'idb-keyval';
+import type { ThinkingIntent } from '@/lib/model-capabilities';
 
 // Custom storage engine using IndexedDB
 const idbStorage: StateStorage = {
@@ -75,6 +76,8 @@ interface AppState {
   // Settings
   enableThinking: boolean;
   setEnableThinking: (enabled: boolean) => void;
+  customThinkingIntent: ThinkingIntent;
+  setCustomThinkingIntent: (intent: ThinkingIntent) => void;
 
   // Session Management
   sessions: Record<string, Session>;
@@ -112,6 +115,8 @@ export const useAppStore = create<AppState>()(
 
       enableThinking: false,
       setEnableThinking: (enableThinking) => set({ enableThinking }),
+      customThinkingIntent: 'auto',
+      setCustomThinkingIntent: (customThinkingIntent) => set({ customThinkingIntent }),
 
       sessions: {},
       activeSessionId: null,
@@ -195,6 +200,7 @@ export const useAppStore = create<AppState>()(
         visionModelId: state.visionModelId,
         imageModelId: state.imageModelId,
         enableThinking: state.enableThinking,
+        customThinkingIntent: state.customThinkingIntent,
         sessions: state.sessions,
         activeSessionId: state.activeSessionId,
       }),

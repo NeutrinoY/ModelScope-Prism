@@ -2,6 +2,7 @@ export type ConversationRequestPayload = {
   messages: unknown[];
   model: string;
   apiKey: string;
+  thinkingIntent?: 'auto' | 'on' | 'off';
   enableThinking?: boolean;
 };
 

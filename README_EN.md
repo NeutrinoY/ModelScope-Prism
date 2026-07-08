@@ -57,7 +57,7 @@ All your chat history and generated image links are **saved in your current brow
     *   👉 [Find more Text Generation Models](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:text-generation&type=tasks)
 *   **Thinking Process**:
     *   **Built-in Models**: Click the **"Reasoning"** tag under the model name in the top bar to toggle on/off.
-    *   **Custom Models**: Click the settings icon ⚙️ at the bottom and check `Enable Thinking Process` in global settings.
+    *   **Custom Models**: Click the settings icon ⚙️ at the bottom and choose `Auto`, `Try On`, or `Try Off`. Prism hides the provider-specific protocol details; if the model rejects the thinking control parameter, it retries with the model default and shows a notice.
     *   *Note: The thinking process is displayed elegantly in a collapsible/quoted format, supporting click-to-expand.*
 
 #### 👁️ VLM Visual Understanding
@@ -174,22 +174,16 @@ Open your browser and visit `http://localhost:3000`.
     *   `services/`: Frontend API call wrappers (e.g. `conversation-service.ts`).
 *   **`scripts/`**: Automation and validation
     *   `smoke.mjs`: Pre-release minimal chain validation (chat + image).
-    *   `probe.mjs`: Model capability probing (`quick/full` + historical report comparison).
+    *   `probe.mjs`: Lightweight ModelScope chat compatibility probing.
 
 #### Model Probe
 
 ```bash
-# full mode (default)
+# lightweight compatibility probe
 pnpm probe Qwen/Qwen3.5-397B-A17B
-
-# quick mode
-pnpm probe Qwen/Qwen3.5-397B-A17B quick
-
-# full mode with explicit repeats
-pnpm probe Qwen/Qwen3.5-397B-A17B full 2
 ```
 
-Probe reports are written as `probe-report-*.json` in the project root. Each report includes per-case status codes, latency, content validity, reasoning detection, parse errors, error categories, historical comparison, and a ready-to-copy profile snippet for `lib/model-capabilities.ts`.
+Probe reports are written to `probe-reports/`. Each probe writes two files: `probe-report-*.json` is the diagnostic report with per-case status codes, latency, content validity, reasoning detection, parse errors, error categories, and raw error previews; `probe-report-*.md` is the human-readable capability overview with chat, streaming, thinking control, vision input, output token parameter, and a ready-to-copy profile snippet for `lib/model-capabilities.ts`.
 
 ---
 

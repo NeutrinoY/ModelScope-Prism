@@ -58,7 +58,7 @@
     *   👉 [查找更多文本生成模型 (Text Generation)](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:text-generation&type=tasks)
 *   **思考模式 (Thinking Process)**：
     *   **内置模型**：直接点击顶部模型名称下方的 **"Reasoning"** 标签即可开启/关闭。
-    *   **自定义模型**：请点击底部设置图标 ⚙️，在全局设置中勾选 `Enable Thinking Process` 来启用。
+    *   **自定义模型**：请点击底部设置图标 ⚙️，在全局设置中选择 `Auto`、`Try On` 或 `Try Off`。Prism 会隐藏具体协议细节；如果模型拒绝思考控制参数，会自动回退到模型默认模式并给出提示。
     *   *注：思考过程会以折叠/引用的方式优雅展示，支持点击展开查看详细推理步骤。*
 
 #### 👁️ VLM 视觉理解
@@ -198,23 +198,18 @@ SMOKE_CHAT_MODEL=Qwen/Qwen3.5-397B-A17B SMOKE_IMAGE_MODEL=Qwen/Qwen-Image pnpm s
 #### 模型探测（Probe）
 
 ```bash
-# full 模式（默认）
+# 轻量兼容性探测
 pnpm probe Qwen/Qwen3.5-397B-A17B
-
-# quick 模式（更快，采样更少）
-pnpm probe Qwen/Qwen3.5-397B-A17B quick
-
-# 指定 full + repeats
-pnpm probe Qwen/Qwen3.5-397B-A17B full 2
 ```
 
-探测报告会输出到项目根目录 `probe-report-*.json`，并自动尝试与同模型上一份报告做能力变化对比。报告包含每个探测 case 的状态码、延迟、内容有效性、reasoning 检出、解析错误与错误分类，并给出可复制到 `lib/model-capabilities.ts` 的 profile 片段。
+探测报告会输出到 `probe-reports/`。每次探测会生成两份文件：`probe-report-*.json` 是完整诊断，包含每个探测 case 的状态码、延迟、内容有效性、reasoning 检出、解析错误、错误分类和原始错误预览；`probe-report-*.md` 是面向人工阅读的能力概览，包含聊天、流式、思考开关、视觉输入、输出 token 参数和可复制到 `lib/model-capabilities.ts` 的 profile 片段。
 
 探测重点：
-*   **strictness**：模型是否拒绝未知参数。
-*   **thinking control**：是否支持 `enable_thinking` 或 `chat_template_kwargs`。
-*   **stream compatibility**：流式响应是否稳定输出 content / reasoning。
-*   **confidence**：根据模式、样本数和解析错误给出 high / medium / low 置信度。
+*   **chat availability**：模型是否能在 ModelScope OpenAI-compatible endpoint 上返回有效文本。
+*   **stream compatibility**：流式响应是否能稳定输出 content / reasoning。
+*   **thinking control**：是否支持 `enable_thinking`、`chat_template_kwargs` 或 `thinking.type`。
+*   **vision input**：是否支持远程图片 URL 或 data URL。
+*   **output token parameter**：优先确认 `max_tokens` 是否有效，无效时再尝试 `max_completion_tokens`。
 
 #### 项目核心结构
 *   **`app/api/`**: 后端 API 路由层（Node/Edge Runtime）
@@ -237,7 +232,7 @@ pnpm probe Qwen/Qwen3.5-397B-A17B full 2
     *   `services/`：前端 API 调用封装（如 `conversation-service.ts`）。
 *   **`scripts/`**: 自动化验证与探测
     *   `smoke.mjs`：发布前最小链路验证（chat + image）。
-    *   `probe.mjs`：模型能力探测（quick/full、历史报告对比）。
+    *   `probe.mjs`：轻量模型兼容性探测。
 
 ---
 

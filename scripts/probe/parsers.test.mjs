@@ -6,7 +6,18 @@ describe('probe parsers', () => {
     const result = parseNonStreamResult(
       200,
       JSON.stringify({
-        choices: [{ message: { content: 'answer', reasoning_content: 'thinking' } }],
+        choices: [
+          {
+            message: { content: 'answer', reasoning_content: 'thinking' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: {
+          prompt_tokens: 3,
+          completion_tokens: 5,
+          total_tokens: 8,
+          completion_tokens_details: { reasoning_tokens: 2 },
+        },
       })
     );
 
@@ -16,6 +27,14 @@ describe('probe parsers', () => {
       hasReasoning: true,
       contentLength: 6,
       reasoningLength: 8,
+      finishReason: 'stop',
+      contentPreview: 'answer',
+      usage: {
+        promptTokens: 3,
+        completionTokens: 5,
+        totalTokens: 8,
+        reasoningTokens: 2,
+      },
       errorCategory: null,
     });
   });
@@ -34,6 +53,8 @@ describe('probe parsers', () => {
     const raw = [
       'data: {"choices":[{"delta":{"reasoning_content":"step"}}]}',
       'data: {"choices":[{"delta":{"content":"ok"}}]}',
+      'data: {"choices":[{"finish_reason":"length","delta":{}}]}',
+      'data: {"choices":[],"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}',
       'data: [DONE]',
       'data: {broken',
     ].join('\n');
@@ -46,7 +67,14 @@ describe('probe parsers', () => {
       hasReasoning: true,
       contentLength: 2,
       reasoningLength: 4,
-      parsedChunks: 2,
+      finishReason: 'length',
+      contentPreview: 'ok',
+      usage: {
+        promptTokens: 1,
+        completionTokens: 2,
+        totalTokens: 3,
+      },
+      parsedChunks: 3,
       parseErrors: 1,
     });
   });
@@ -63,10 +91,21 @@ describe('probe parsers', () => {
       acceptedCount: 2,
       validCount: 2,
       reasoningCount: 1,
+      usageCount: 0,
       acceptedMajority: true,
       validMajority: true,
       reasoningMajority: false,
       avgLatencyMs: 200,
+    });
+  });
+
+  it('does not mark empty samples as majority matches', () => {
+    expect(summarizeResults([])).toMatchObject({
+      samples: 0,
+      acceptedMajority: false,
+      validMajority: false,
+      reasoningMajority: false,
+      usageMajority: false,
     });
   });
 });

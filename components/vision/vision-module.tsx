@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useStreamSessionRunner } from '@/hooks/use-stream-session-runner';
 import { ReferenceImageInput } from '@/components/shared/reference-image-input';
 import { requestConversationStream } from '@/lib/services/conversation-service';
+import { getModelProfile } from '@/lib/model-capabilities';
 
 export function VisionModule() {
   const {
@@ -30,6 +31,7 @@ export function VisionModule() {
     updateSessionData,
     createSession,
     renameSession,
+    customThinkingIntent,
   } = useAppStore();
 
   const [input, setInput] = useState('');
@@ -106,6 +108,9 @@ export function VisionModule() {
     setInput('');
     setSelectedImage(null);
 
+    const profile = getModelProfile(visionModelId);
+    const thinkingIntent = profile.source === 'custom' ? customThinkingIntent : 'on';
+
     try {
       let assistantContent = '';
       let assistantReasoning = '';
@@ -129,7 +134,7 @@ export function VisionModule() {
               messages: updatedMessages,
               model: visionModelId,
               apiKey: apiKey,
-              enableThinking: true,
+              thinkingIntent,
             },
             signal
           ),
@@ -143,6 +148,7 @@ export function VisionModule() {
           assistantContent += text;
           syncAssistant();
         },
+        onNotice: (notice) => toast.info(notice.message),
         onError: (message) => toast.error(message || 'Failed to analyze image'),
       });
     } catch (error: any) {

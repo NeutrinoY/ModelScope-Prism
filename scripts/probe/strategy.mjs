@@ -1,77 +1,79 @@
-export function getConfidenceLabel({ mode, acceptedSamples, parseErrors }) {
-  if (acceptedSamples < 1 || parseErrors > 0) return 'low';
-  if (mode === 'quick' || acceptedSamples < 2) return 'medium';
-  return 'high';
-}
-
-export function deriveStrategy(ctx) {
-  const mode = ctx.mode || 'full';
-  const strict = ctx.strict === true;
+export function deriveThinkingProfile(ctx) {
   const baselineReasoning = ctx.baselineReasoning === true;
   const rootOnReasoning = ctx.rootOnReasoning === true;
-  const kwargsThinkingOnReasoning = ctx.kwargsThinkingOnReasoning === true;
-  const kwargsEnableOnReasoning = ctx.kwargsEnableOnReasoning === true;
+  const kwargsOnReasoning = ctx.kwargsOnReasoning === true;
+  const thinkingTypeOnReasoning = ctx.thinkingTypeOnReasoning === true;
   const rootOffDisabled = ctx.rootOffDisabled === true;
-  const kwargsThinkingOffDisabled = ctx.kwargsThinkingOffDisabled === true;
-  const kwargsEnableOffDisabled = ctx.kwargsEnableOffDisabled === true;
+  const kwargsOffDisabled = ctx.kwargsOffDisabled === true;
+  const thinkingTypeOffDisabled = ctx.thinkingTypeOffDisabled === true;
 
-  if (baselineReasoning && strict) {
-    return {
-      strategy: 'native_always_on',
-      confidence: 'high',
-      notes: 'Reasoning appears by default and unknown params are rejected.',
-    };
-  }
-
-  if (baselineReasoning && !strict) {
+  if (baselineReasoning) {
     if (rootOffDisabled) {
       return {
-        strategy: 'root_boolean',
-        confidence: mode === 'quick' ? 'medium' : 'high',
-        notes: 'Reasoning can be turned off with top-level enable_thinking.',
+        control: 'root_boolean',
+        defaultEnabled: true,
+        canDisable: true,
+        notes: 'Reasoning is enabled by default and can be disabled with enable_thinking.',
       };
     }
-    if (kwargsThinkingOffDisabled || kwargsEnableOffDisabled) {
+
+    if (kwargsOffDisabled) {
       return {
-        strategy: 'kwargs_dict',
-        confidence: mode === 'quick' ? 'medium' : 'high',
-        notes: 'Reasoning can be toggled using chat_template_kwargs.',
+        control: 'kwargs_dict',
+        defaultEnabled: true,
+        canDisable: true,
+        notes: 'Reasoning is enabled by default and can be disabled with chat_template_kwargs.',
       };
     }
-    if (mode === 'quick') {
+
+    if (thinkingTypeOffDisabled) {
       return {
-        strategy: 'none',
-        confidence: 'low',
-        notes:
-          'Quick mode result is inconclusive for disable-path. Run full mode for reliable toggle strategy.',
+        control: 'thinking_object',
+        defaultEnabled: true,
+        canDisable: true,
+        notes: 'Reasoning is enabled by default and can be disabled with thinking.type.',
       };
     }
+
     return {
-      strategy: 'native_always_on',
-      confidence: 'medium',
-      notes: 'Reasoning is default and not reliably disabled by known toggles.',
+      control: 'native_always_on',
+      defaultEnabled: true,
+      canDisable: false,
+      notes: 'Reasoning appears by default and was not disabled by known controls.',
     };
   }
 
   if (rootOnReasoning) {
     return {
-      strategy: 'root_boolean',
-      confidence: mode === 'quick' ? 'medium' : 'high',
-      notes: 'Reasoning can be enabled with top-level enable_thinking.',
+      control: 'root_boolean',
+      defaultEnabled: false,
+      canDisable: true,
+      notes: 'Reasoning can be enabled with enable_thinking.',
     };
   }
 
-  if (kwargsThinkingOnReasoning || kwargsEnableOnReasoning) {
+  if (kwargsOnReasoning) {
     return {
-      strategy: 'kwargs_dict',
-      confidence: mode === 'quick' ? 'medium' : 'high',
+      control: 'kwargs_dict',
+      defaultEnabled: false,
+      canDisable: true,
       notes: 'Reasoning can be enabled with chat_template_kwargs.',
     };
   }
 
+  if (thinkingTypeOnReasoning) {
+    return {
+      control: 'thinking_object',
+      defaultEnabled: false,
+      canDisable: true,
+      notes: 'Reasoning can be enabled with thinking.type.',
+    };
+  }
+
   return {
-    strategy: 'none',
-    confidence: mode === 'quick' ? 'medium' : 'high',
-    notes: 'No reliable reasoning toggle detected with known probes.',
+    control: 'none',
+    defaultEnabled: false,
+    canDisable: true,
+    notes: 'No reasoning output or supported thinking control was detected.',
   };
 }

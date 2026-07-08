@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { BrainCircuit } from 'lucide-react';
+import type { ThinkingIntent } from '@/lib/model-capabilities';
 
 export function SettingsModal() {
   const [open, setOpen] = useState(false);
@@ -28,15 +29,15 @@ export function SettingsModal() {
     setVisionModelId,
     imageModelId,
     setImageModelId,
-    enableThinking,
-    setEnableThinking,
+    customThinkingIntent,
+    setCustomThinkingIntent,
   } = useAppStore();
 
   const [localApiKey, setLocalApiKey] = useState('');
   const [localChatId, setLocalChatId] = useState('');
   const [localVisionId, setLocalVisionId] = useState('');
   const [localImageId, setLocalImageId] = useState('');
-  const [localThinking, setLocalThinking] = useState(false);
+  const [localThinkingIntent, setLocalThinkingIntent] = useState<ThinkingIntent>('auto');
 
   useEffect(() => {
     const handleOpen = () => setOpen(true);
@@ -50,16 +51,16 @@ export function SettingsModal() {
       setLocalChatId(chatModelId);
       setLocalVisionId(visionModelId);
       setLocalImageId(imageModelId);
-      setLocalThinking(enableThinking);
+      setLocalThinkingIntent(customThinkingIntent);
     }
-  }, [open, apiKey, chatModelId, visionModelId, imageModelId, enableThinking]);
+  }, [open, apiKey, chatModelId, visionModelId, imageModelId, customThinkingIntent]);
 
   const handleSave = () => {
     setApiKey(localApiKey);
     setChatModelId(localChatId);
     setVisionModelId(localVisionId);
     setImageModelId(localImageId);
-    setEnableThinking(localThinking);
+    setCustomThinkingIntent(localThinkingIntent);
 
     setOpen(false);
     toast.success('Settings saved');
@@ -111,27 +112,35 @@ export function SettingsModal() {
               placeholder="e.g. deepseek-ai/DeepSeek-V3.2"
             />
 
-            {/* Thinking Mode Toggle */}
-            <div className="flex items-center space-x-3 pt-1">
-              <input
-                type="checkbox"
-                id="thinking-mode"
-                checked={localThinking}
-                onChange={(e) => setLocalThinking(e.target.checked)}
-                className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-primary shadow-sm"
-              />
-              <div className="grid gap-1.5 leading-none">
-                <label
-                  htmlFor="thinking-mode"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-                >
-                  <BrainCircuit className="h-3.5 w-3.5" />
-                  Enable Thinking Process
-                </label>
-                <p className="text-[10px] text-muted-foreground">
-                  Only applies to Custom Models. Presets have their own toggles.
-                </p>
+            {/* Custom Model Thinking Intent */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <BrainCircuit className="h-3.5 w-3.5" />
+                Custom model thinking
               </div>
+              <div className="grid grid-cols-3 gap-1 rounded-xl border border-border/50 bg-muted/30 p-1">
+                {[
+                  { value: 'auto', label: 'Auto' },
+                  { value: 'on', label: 'Try On' },
+                  { value: 'off', label: 'Try Off' },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setLocalThinkingIntent(item.value as ThinkingIntent)}
+                    className={`rounded-lg px-2 py-1.5 text-xs transition-colors ${
+                      localThinkingIntent === item.value
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Custom models use a compatibility fallback if thinking controls are rejected.
+              </p>
             </div>
           </div>
 

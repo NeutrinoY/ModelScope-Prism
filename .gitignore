@@ -13,6 +13,8 @@
 
 # testing
 /coverage
+/probe-reports/
+probe-report-*.json
 
 # next.js
 /.next/
@@ -41,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Agents
+.agents
