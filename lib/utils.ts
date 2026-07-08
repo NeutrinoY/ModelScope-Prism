@@ -1,8 +1,8 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 export async function compressImage(file: File, quality = 0.8): Promise<string> {
@@ -27,7 +27,7 @@ export async function compressImage(file: File, quality = 0.8): Promise<string> 
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
-        
+
         // Only apply quality compression
         const dataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(dataUrl);

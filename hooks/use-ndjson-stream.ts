@@ -1,23 +1,26 @@
-"use client";
+'use client';
 
-import { useCallback } from "react";
+import { useCallback } from 'react';
 
 type StreamDelta = {
   c?: string;
   r?: string;
+  n?: string;
+  code?: string;
 };
 
 type ReadNdjsonOptions = {
   allowPlainTextFallback?: boolean;
   onDelta: (delta: StreamDelta) => void;
   onPlainText?: (text: string) => void;
+  onNotice?: (notice: { message: string; code?: string }) => void;
 };
 
 export function useNdjsonStream() {
   const readNdjsonStream = useCallback(
     async (reader: ReadableStreamDefaultReader<Uint8Array>, options: ReadNdjsonOptions) => {
       const decoder = new TextDecoder();
-      let buffer = "";
+      let buffer = '';
 
       const emitPlainText = (text: string) => {
         if (!options.allowPlainTextFallback) return;
@@ -30,8 +33,8 @@ export function useNdjsonStream() {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -41,6 +44,8 @@ export function useNdjsonStream() {
             const parsed = JSON.parse(trimmed) as StreamDelta;
             if (parsed.c || parsed.r) {
               options.onDelta(parsed);
+            } else if (parsed.n) {
+              options.onNotice?.({ message: parsed.n, code: parsed.code });
             }
           } catch {
             emitPlainText(line);
@@ -55,6 +60,8 @@ export function useNdjsonStream() {
         const parsed = JSON.parse(finalChunk) as StreamDelta;
         if (parsed.c || parsed.r) {
           options.onDelta(parsed);
+        } else if (parsed.n) {
+          options.onNotice?.({ message: parsed.n, code: parsed.code });
         }
       } catch {
         emitPlainText(buffer);

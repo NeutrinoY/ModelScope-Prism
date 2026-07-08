@@ -17,7 +17,7 @@
 
 ### ✨ Core Highlights
 
-- **🧠 Deep Thinking Mode**: Perfectly supports advanced models like **DeepSeek V3.2**, **GLM-5**, **MiniMax M2.5**, **Kimi K2.5**, and **Qwen3.5**. Enable it to natively display the **Chain of Thought (CoT)**, making the AI's reasoning process visible.
+- **🧠 Deep Thinking Mode**: Supports built-in models like **DeepSeek V4 Flash**, **DeepSeek V4 Pro**, **GLM-5.2**, and **Qwen3.5**. Enable it to natively display the **Chain of Thought (CoT)**, making the AI's reasoning process visible.
 - **🎨 AIGC Canvas**: More than just image generation—supports **LoRA Model Loading**, **CFG/Steps Fine-tuning**, **Custom Resolutions**, and an **Immersive Image Gallery**.
 - **👀 Multimodal Vision**: Supports visual models like **Qwen3-VL**, allowing you to upload images for in-depth Q&A and analysis.
 - **🔒 Data Privacy & Security**: Adheres to the **Local-First** principle. All chat history, Access Tokens, and settings are stored locally in your **browser (Local Storage)**. No data is uploaded to third-party servers other than direct calls to the ModelScope API.
@@ -57,11 +57,12 @@ All your chat history and generated image links are **saved in your current brow
     *   👉 [Find more Text Generation Models](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:text-generation&type=tasks)
 *   **Thinking Process**:
     *   **Built-in Models**: Click the **"Reasoning"** tag under the model name in the top bar to toggle on/off.
-    *   **Custom Models**: Click the settings icon ⚙️ at the bottom and check `Enable Thinking Process` in global settings.
+    *   **Custom Models**: Click the settings icon ⚙️ at the bottom and choose `Auto`, `Try On`, or `Try Off`. Prism hides the provider-specific protocol details; if the model rejects the thinking control parameter, it retries with the model default and shows a notice.
     *   *Note: The thinking process is displayed elegantly in a collapsible/quoted format, supporting click-to-expand.*
 
 #### 👁️ VLM Visual Understanding
 *   **Image Chat**: Upload an image and ask "What is in the picture?" or "Extract text from the image".
+*   **Vision Thinking Mode**: Toggle thinking directly from the input bar, with the same reasoning display experience as the LLM module.
 *   **Custom Models**: Besides the built-in Qwen-VL, you can try other multimodal models supporting OpenAI format.
     *   👉 [Find more Image-to-Text Models](https://modelscope.cn/models?filter=inference_type&page=1&tabKey=task&tasks=hotTask:image-text-to-text&type=tasks)
 
@@ -89,6 +90,42 @@ To accommodate varying parameter compatibility across models, we designed a **Ba
 
 ### 📝 Changelog
 
+#### v1.4 [2026.07.08]
+
+**✨ Features**
+*   **Built-in Model Capability Convergence**: Rebuilt the preset list from ModelScope probe results, keeping only four confirmed usable models: DeepSeek V4 Flash, DeepSeek V4 Pro, GLM-5.2, and Qwen3.5. Each model now has a fixed profile for text, vision, thinking, and output token behavior.
+*   **Multimodal Input in LLM Chat**: Added image input to the LLM module using the shared reference image component. The UI now disables unsupported entry points automatically when a model is text-only, URL-only, or does not support local image uploads.
+*   **VLM Thinking Mode**: Added a dedicated `visionThinkingIntent` state and composer-level thinking toggle for the Vision module, supporting Auto / On / Off behavior based on model capability while reusing the unified reasoning display path.
+*   **Streaming-first Model Probe**: Refined probing around the product's real streaming chat path, detecting `enable_thinking`, `thinking.type`, `chat_template_kwargs`, `max_tokens`, quota limits, and unavailable upstream providers.
+
+**🚀 Improvements & Refactoring**
+*   **Lighter Model Strategy**: Replaced broad runtime fallback behavior with fixed built-in model profiles plus conservative best-effort handling for custom model IDs, reducing unpredictable probing costs on Vercel.
+*   **Unified Single-row Composer**: Aligned Chat, Vision, and AIGC around a compact single-row input layout where reference image, parameters, thinking, and send/stop actions live in one control surface.
+*   **Composer-level Thinking Control**: Moved thinking controls into the message composer and surfaced capability-aware states such as `Reasoning Active`, `Chat Mode`, and `Thinking Auto`.
+*   **Cleaner Model Selector**: Reworked model capability labels into `Text` / `Vision` badges and unified the selected state with a more restrained secondary background.
+*   **Frontend Style Spec**: Added a frontend style consistency design note to keep future UI work aligned on layout density, component boundaries, and capability-state presentation.
+
+**🐛 Bug Fixes**
+*   **Probe Error Classification**: Classified ModelScope `402 insufficient balance` as `quota_limited` instead of model unavailable, and improved streaming JSON error parsing plus token-cap truncation detection.
+*   **Qwen Vision Capability Fix**: Updated Qwen3.5 to support remote image URLs while rejecting data URL uploads, preventing the UI from exposing an unsupported local-upload path.
+
+#### v1.3 [2026.06.27]
+
+**✨ Features**
+*   **Unified Conversation API**: Merged the former LLM and VLM backend paths into `app/api/conversation`, with one streaming endpoint for text, images, reasoning output, and incremental responses.
+*   **Minimal Regression Pipeline**: Added `scripts/smoke.mjs` for pre-release validation of the critical chat + image paths.
+*   **Automated Blackbox Probe**: Introduced a modular probe script that generates both JSON diagnostics and Markdown capability overviews for arbitrary ModelScope models.
+
+**🚀 Improvements & Refactoring**
+*   **ModelScope Adapter Refactor**: Added `lib/modelscope/conversation.ts` and `conversation-service` to centralize OpenAI-compatible requests, NDJSON parsing, and frontend session calls.
+*   **Shared Streaming Session Layer**: Extracted a reusable stream session runner so Chat and Vision share stop-generation, error handling, and incremental update behavior.
+*   **Tooling and Config Update**: Migrated to pnpm lockfiles and Biome checks, while centralizing rate limits, timeouts, and body-size thresholds in the config layer.
+*   **AIGC Stability Upgrade**: Added request IDs, timeouts, rate limiting, and sanitized error handling to image task APIs for better production diagnostics and recovery.
+
+**🐛 Bug Fixes**
+*   **Local Storage Overflow Fix**: Replaced capacity-limited `localStorage` with asynchronous `IndexedDB`, reducing `QuotaExceededError` risk for multimodal sessions with large images.
+*   **Request Observability**: Added end-to-end `requestId` propagation (response header + server logs) across chat, vision, and image APIs for faster incident tracing.
+
 #### v1.2 [2026.03.03]
 
 **✨ Features**
@@ -109,7 +146,7 @@ To accommodate varying parameter compatibility across models, we designed a **Ba
 #### v1.1 [2026.03.02]
 
 **✨ Features**
-*   **Model Ecosystem Upgrade**: Comprehensively updated the preset model list with the latest SOTA models (DeepSeek V3.2, GLM-5, MiniMax M2.5, Kimi K2.5, Qwen3.5).
+*   **Model Ecosystem Upgrade**: Converged the preset model list to probed usable models: DeepSeek V4 Flash, DeepSeek V4 Pro, GLM-5.2, and Qwen3.5.
 *   **Automated Blackbox Probe**: Introduced `scripts/probe.mjs`, an automated testing script to dynamically sniff parameter strictness and reasoning capabilities of any new ModelScope model.
 *   **Enhanced Streaming Control**: Integrated native `AbortController` into both LLM and VLM modules. The send button now dynamically transforms into a "Stop Generation" button.
 *   **VLM Reasoning Collapse**: Refactored the VLM backend stream to NDJSON format, allowing the frontend to neatly extract and elegantly collapse the Chain of Thought (Reasoning) of modern multimodal models.
@@ -133,7 +170,7 @@ If you wish to run locally or contribute, follow these steps.
 
 #### Requirements
 *   Node.js 18+
-*   npm / pnpm / yarn
+*   pnpm
 
 #### Installation & Run
 
@@ -145,17 +182,17 @@ git clone https://github.com/NeutrinoY/ModelScope-Prism.git
 cd ModelScope-Prism
 
 # 3. Install dependencies
-npm install
+pnpm install
 
 # 4. Start development server
-npm run dev
+pnpm dev
 ```
 
 Open your browser and visit `http://localhost:3000`.
 
 #### Core Project Structure
 *   **`app/api/`**: Backend route layer (Node/Edge Runtime)
-    *   `chat/route.ts`, `vision/route.ts`: Streaming endpoints for LLM/VLM.
+    *   `conversation/route.ts`: Unified streaming endpoint for LLM/VLM.
     *   `image/generate/route.ts`, `image/status/[taskId]/route.ts`: AIGC task submission and status polling.
 *   **`components/`**: View and interaction layer
     *   `chat/`, `vision/`, `image/`: UI modules for the three core capabilities.
@@ -166,13 +203,24 @@ Open your browser and visit `http://localhost:3000`.
     *   `use-stream-session-runner.ts`: Unified request/abort/error flow for streaming sessions.
 *   **`lib/`**: Domain and infrastructure utilities
     *   `store.ts`: Global state persistence with Zustand + IndexedDB.
-    *   `models.ts`: Model series, strategy mapping, and minimal `ModelProfile`.
+    *   `model-capabilities.ts`: Model capability profiles, modality support, and thinking strategy mapping.
+    *   `modelscope/conversation.ts`: ModelScope OpenAI-compatible adapter powered by the OpenAI SDK.
+    *   `models.ts`: Compatibility facade for existing frontend model imports.
     *   `config.ts`: Centralized thresholds (rate limit, timeout, payload size) via env config.
     *   `api-security.ts`: API security utilities (rate limiting, timeout, error sanitization, requestId).
-    *   `services/`: Frontend API call wrappers (e.g. `chat-service.ts`).
+    *   `services/`: Frontend API call wrappers (e.g. `conversation-service.ts`).
 *   **`scripts/`**: Automation and validation
     *   `smoke.mjs`: Pre-release minimal chain validation (chat + image).
-    *   `probe.mjs`: Model capability probing (`quick/full` + historical report comparison).
+    *   `probe.mjs`: Lightweight ModelScope chat compatibility probing.
+
+#### Model Probe
+
+```bash
+# lightweight compatibility probe
+pnpm probe Qwen/Qwen3.5-397B-A17B
+```
+
+Probe reports are written to `probe-reports/`. Each probe writes two files: `probe-report-*.json` is the diagnostic report with per-case status codes, latency, content validity, reasoning detection, parse errors, error categories, and raw error previews; `probe-report-*.md` is the human-readable capability overview with streaming chat, thinking control, vision input, output token parameter, and a ready-to-copy profile snippet for `lib/model-capabilities.ts`.
 
 ---
 

@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.pnpm-store
 /.pnp
 .pnp.*
 .yarn/*
@@ -12,6 +13,8 @@
 
 # testing
 /coverage
+/probe-reports/
+probe-report-*.json
 
 # next.js
 /.next/
@@ -23,6 +26,7 @@
 # misc
 .DS_Store
 *.pem
+AGENTS-result.md
 
 # debug
 npm-debug.log*
@@ -39,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Agents
+.agents
