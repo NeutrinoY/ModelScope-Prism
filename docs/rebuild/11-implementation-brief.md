@@ -432,7 +432,7 @@ React 19
 TypeScript
 Tailwind CSS v4
 Radix Primitives
-framer-motion 第一阶段
+motion
 lucide-react
 next-themes
 zustand

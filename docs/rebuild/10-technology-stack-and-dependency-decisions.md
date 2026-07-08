@@ -48,7 +48,7 @@ React 19
 TypeScript
 Tailwind CSS v4
 Radix Primitives
-Motion / Framer Motion
+Motion for React
 Zustand
 IndexedDB via idb-keyval
 Zod
@@ -206,26 +206,25 @@ Radix 只提供行为和无障碍基础
 决策：
 
 ```text
-第一阶段保留 framer-motion
-后续可评估迁移到 motion / motion/react
-不要同时长期保留两套动效入口
+第一阶段使用 motion
+React 组件从 motion/react 导入
+不再新增 framer-motion
 ```
 
 理由：
 
 ```text
-当前项目已经大量使用 AnimatePresence、layout、motion.div
+motion 是第一阶段动效库入口
 用户明确希望保留现有流畅细腻的动效手感
-第一阶段不应把动效迁移和架构重构混在一起
+新骨架尚未实现业务组件，适合直接使用 motion/react
 ```
 
-迁移条件：
+实现要求：
 
 ```text
-前端组件边界稳定
-动效 token 已统一
-确认 motion/react 替换成本低
-构建产物或维护成本有明确收益
+AnimatePresence、layout 动画、手势和入场离场动效优先使用 motion/react
+普通 hover、focus、颜色变化优先使用 CSS transition
+不要同时引入 motion 与 framer-motion
 ```
 
 ## 图标
@@ -621,7 +620,7 @@ Agent 熟悉
 ```text
 Next.js + React + Tailwind 的总体路线
 Radix primitive 风格的基础 UI
-Framer Motion 带来的细腻动效
+Motion 带来的细腻动效
 lucide 图标系统
 Zustand + IndexedDB 的 local-first 方向
 OpenAI SDK 调用 ModelScope Chat Completions 的经验

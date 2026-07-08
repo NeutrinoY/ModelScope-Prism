@@ -197,7 +197,7 @@ Light mode 不得是降级 fallback
 图片入场：240-320ms
 ```
 
-允许继续使用 Framer Motion：
+允许使用 Motion for React：
 
 ```text
 AnimatePresence
