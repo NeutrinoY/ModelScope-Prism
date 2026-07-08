@@ -31,7 +31,8 @@ export function VisionModule() {
     updateSessionData,
     createSession,
     renameSession,
-    customThinkingIntent,
+    visionThinkingIntent,
+    setVisionThinkingIntent,
   } = useAppStore();
 
   const [input, setInput] = useState('');
@@ -45,6 +46,40 @@ export function VisionModule() {
     profile.source === 'custom'
       ? 'This custom model will be tried with image input.'
       : `${profile.label} is profiled as text-only.`;
+
+  // 思考模式控制逻辑
+  const canToggleThinking = profile.source === 'custom' || profile.thinking.control !== 'none';
+  const resolveThinkingEnabled = (prof: any, intent: any) => {
+    if (intent === 'auto') return prof.thinking.defaultEnabled;
+    return intent === 'on';
+  };
+  const isCurrentlyReasoning = profile.source === 'custom'
+    ? visionThinkingIntent === 'on'
+    : profile.thinking.control === 'native_always_on' || resolveThinkingEnabled(profile, visionThinkingIntent);
+
+  const thinkingStatusLabel = profile.source === 'custom'
+    ? visionThinkingIntent === 'auto'
+      ? 'Thinking Auto'
+      : visionThinkingIntent === 'on'
+        ? 'Try Thinking'
+        : 'Try No Thinking'
+    : isCurrentlyReasoning
+      ? 'Reasoning Active'
+      : 'Chat Mode';
+
+  const toggleCurrentReasoning = () => {
+    if (profile.source === 'custom') {
+      const nextIntent =
+        visionThinkingIntent === 'auto' ? 'on' : visionThinkingIntent === 'on' ? 'off' : 'auto';
+      setVisionThinkingIntent(nextIntent);
+      return;
+    }
+    if (profile.thinking.control === 'native_always_on') {
+      toast.info('This model natively outputs reasoning and cannot be turned off.');
+      return;
+    }
+    setVisionThinkingIntent(visionThinkingIntent === 'on' ? 'off' : 'on');
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +158,7 @@ export function VisionModule() {
     setInput('');
     setSelectedImage(null);
 
-    const thinkingIntent = profile.source === 'custom' ? customThinkingIntent : 'on';
+    const thinkingIntent = visionThinkingIntent;
 
     try {
       let assistantContent = '';
@@ -291,8 +326,9 @@ export function VisionModule() {
         <div className="max-w-3xl mx-auto flex flex-col gap-2">
           <form
             onSubmit={handleSubmit}
-            className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-2 shadow-2xl focus-within:border-primary/50 transition-all group flex items-end gap-2"
+            className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-1.5 shadow-2xl focus-within:border-primary/45 focus-within:ring-4 focus-within:ring-primary/5 transition-all group flex items-end gap-2"
           >
+            {/* 图片输入按钮（Compact 气泡弹窗式） */}
             <ReferenceImageInput
               compact
               value={selectedImage || ''}
@@ -302,6 +338,8 @@ export function VisionModule() {
               allowUpload={allowImageDataUrl}
               disabledReason={imageDisabledReason}
             />
+
+            {/* 自适应 textarea */}
             <textarea
               ref={textareaRef}
               value={input}
@@ -309,27 +347,49 @@ export function VisionModule() {
               onKeyDown={handleKeyDown}
               placeholder={supportsAnyImage ? "What's in this image?" : 'Ask this model...'}
               rows={1}
-              className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
+              className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-1 text-sm leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
             />
+
+            {/* VLM 思考模式 Toggle 开关 (根据模型支持度动态显示) */}
+            {canToggleThinking && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={toggleCurrentReasoning}
+                className={cn(
+                  'h-9 shrink-0 rounded-xl px-2.5 text-[10px] gap-1 transition-colors duration-200 mb-0.5',
+                  isCurrentlyReasoning
+                    ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15'
+                    : 'text-muted-foreground hover:bg-muted'
+                )}
+                title={thinkingStatusLabel}
+              >
+                <BrainCircuit className="h-4 w-4" />
+                <span className="hidden sm:inline">Think</span>
+              </Button>
+            )}
+
+            {/* 发送/停止动作按钮 */}
             {isLoading ? (
               <Button
                 type="button"
                 onClick={handleStop}
                 size="icon"
-                className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5 bg-muted text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                className="h-9 w-9 shrink-0 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/15 transition-colors duration-200 mb-0.5 flex items-center justify-center"
               >
-                <Square className="h-4 w-4 fill-current" />
+                <Square className="h-3.5 w-3.5 fill-current" />
               </Button>
             ) : (
               <Button
                 type="submit"
                 size="icon"
                 disabled={!input.trim() && !selectedImage}
-                className="h-9 w-9 shrink-0 rounded-xl transition-all active:scale-95 mb-0.5"
+                className="h-9 w-9 shrink-0 rounded-xl transition-colors duration-200 mb-0.5 flex items-center justify-center"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-3.5 w-3.5" />
               </Button>
-            )}{' '}
+            )}
           </form>
         </div>
       </div>

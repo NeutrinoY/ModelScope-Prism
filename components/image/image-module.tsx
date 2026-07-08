@@ -713,64 +713,62 @@ export function ImageModule() {
         {/* Input Area */}
         <div className="w-full pt-2 pb-2 z-30 px-4">
           <div className="max-w-3xl mx-auto flex flex-col gap-3">
-            <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-1.5 shadow-2xl focus-within:border-primary/50 transition-all group">
-              <div className="flex gap-2 items-end">
-                <ReferenceImageInput compact value={imageEditUrl} onChange={setImageEditUrl} />
-                <textarea
-                  ref={textareaRef}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="A cyberpunk city in the rain, neon lights..."
-                  rows={1}
-                  className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-xs md:text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit();
-                    }
-                  }}
-                />
-                <div className="flex flex-row gap-1 justify-end pb-0.5 pr-0.5">
-                  {/* Mobile Settings Trigger */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground md:hidden"
-                    onClick={() => setIsMobileSettingsOpen(true)}
-                  >
-                    <Sliders className="h-4 w-4" />
-                  </Button>
+            <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-1.5 shadow-2xl focus-within:border-primary/45 focus-within:ring-4 focus-within:ring-primary/5 transition-all group flex items-end gap-2">
+              {/* 图片输入按钮（Compact 气泡弹窗式） */}
+              <ReferenceImageInput compact value={imageEditUrl} onChange={setImageEditUrl} />
 
-                  {/* Desktop Settings Trigger */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      'h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hidden md:flex',
-                      showSettings && 'bg-muted text-foreground'
-                    )}
-                    onClick={() => setShowSettings(!showSettings)}
-                  >
-                    <Sliders className="h-4 w-4" />
-                  </Button>
+              {/* 自适应 textarea */}
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="A cyberpunk city in the rain, neon lights..."
+                rows={1}
+                className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-1 text-sm leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+              />
 
-                  <Button
-                    onClick={handleSubmit}
-                    size="icon"
-                    disabled={isGenerating || !prompt.trim()}
-                    className={cn(
-                      'h-8 w-8 rounded-lg transition-all active:scale-95',
-                      isGenerating && 'opacity-80'
-                    )}
-                  >
-                    {isGenerating ? (
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
+              {/* 移动端参数设置触发按钮 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0 rounded-xl hover:bg-muted text-muted-foreground md:hidden flex items-center justify-center transition-colors duration-200 mb-0.5"
+                onClick={() => setIsMobileSettingsOpen(true)}
+              >
+                <Sliders className="h-4 w-4" />
+              </Button>
+
+              {/* 桌面端参数设置触发按钮 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  'h-9 w-9 shrink-0 rounded-xl hover:bg-muted text-muted-foreground hidden md:flex items-center justify-center transition-colors duration-200 mb-0.5',
+                  showSettings && 'bg-muted text-foreground'
+                )}
+                onClick={() => setShowSettings(!showSettings)}
+              >
+                <Sliders className="h-4 w-4" />
+              </Button>
+
+              {/* 生成动作按钮 */}
+              <Button
+                onClick={handleSubmit}
+                size="icon"
+                disabled={isGenerating || !prompt.trim()}
+                className="h-9 w-9 shrink-0 rounded-xl transition-colors duration-200 mb-0.5 flex items-center justify-center"
+              >
+                {isGenerating ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+              </Button>
             </div>
           </div>
         </div>

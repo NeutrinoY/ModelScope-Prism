@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   Dialog,
   DialogContent,
@@ -126,7 +127,7 @@ export function SettingsModal() {
                 <BrainCircuit className="h-3.5 w-3.5" />
                 Custom model thinking
               </div>
-              <div className="grid grid-cols-3 gap-1 rounded-xl border border-border/50 bg-muted/30 p-1">
+              <div className="grid grid-cols-3 gap-1 rounded-xl border border-border/50 bg-muted/30 p-1 relative">
                 {[
                   { value: 'auto', label: 'Auto' },
                   { value: 'on', label: 'Try On' },
@@ -136,13 +137,20 @@ export function SettingsModal() {
                     key={item.value}
                     type="button"
                     onClick={() => setLocalThinkingIntent(item.value as ThinkingIntent)}
-                    className={`rounded-lg px-2 py-1.5 text-xs transition-colors ${
+                    className={`rounded-lg px-2 py-1.5 text-xs transition-colors relative z-10 ${
                       localThinkingIntent === item.value
-                        ? 'bg-background text-foreground shadow-sm'
+                        ? 'text-foreground'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    {item.label}
+                    <span className="z-10">{item.label}</span>
+                    {localThinkingIntent === item.value && (
+                      <motion.div
+                        layoutId="custom-thinking-bg"
+                        className="absolute inset-0 bg-background shadow-sm border border-border/50 rounded-lg -z-10"
+                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                      />
+                    )}
                   </button>
                 ))}
               </div>

@@ -274,13 +274,19 @@ export function ChatModule() {
                         <span className="font-semibold z-10 truncate max-w-full px-1">
                           {series.name}
                         </span>
-                        <span className="z-10 text-[8px] text-muted-foreground/70">
-                          {supportsImage ? 'Text + Image' : 'Text'}
-                        </span>
+                        {supportsImage ? (
+                          <span className="z-10 text-[9px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold font-mono tracking-wider uppercase scale-90">
+                            Vision
+                          </span>
+                        ) : (
+                          <span className="z-10 text-[9px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground/80 font-mono tracking-wider uppercase scale-90">
+                            Text
+                          </span>
+                        )}
                         {isSelected && (
                           <motion.div
                             layoutId="act-bg"
-                            className="absolute inset-0 bg-background shadow-sm border border-border/50 rounded-xl -z-10"
+                            className="absolute inset-0 bg-secondary shadow-sm border border-border/50 rounded-xl -z-10"
                           />
                         )}
                       </button>
@@ -290,16 +296,18 @@ export function ChatModule() {
                     type="button"
                     onClick={() => document.dispatchEvent(new CustomEvent('open-settings'))}
                     className={cn(
-                      'flex-none w-[100px] md:w-auto md:flex-1 snap-center rounded-xl text-[11px] transition-all flex flex-col items-center justify-center gap-1 relative',
-                      isCustomModel ? 'text-foreground' : 'text-muted-foreground'
+                      'flex-none w-[100px] md:w-auto md:flex-1 snap-center rounded-xl text-[11px] font-medium transition-all flex flex-col items-center justify-center gap-1.5 relative py-1.5 text-muted-foreground hover:bg-background/40',
+                      isCustomModel && 'text-foreground'
                     )}
                   >
                     <span className="font-semibold z-10">Custom</span>
-                    <Settings2 className="h-3 w-3 opacity-50 z-10" />
+                    <span className="z-10 text-[9px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground/80 font-mono tracking-wider uppercase scale-90 flex items-center gap-0.5">
+                      Config <Settings2 className="h-2.5 w-2.5" />
+                    </span>
                     {isCustomModel && (
                       <motion.div
                         layoutId="act-bg"
-                        className="absolute inset-0 bg-background shadow-sm border border-border/50 rounded-xl -z-10"
+                        className="absolute inset-0 bg-secondary shadow-sm border border-border/50 rounded-xl -z-10"
                       />
                     )}
                   </button>
@@ -438,8 +446,9 @@ export function ChatModule() {
         <div className="max-w-3xl mx-auto flex flex-col gap-2">
           <form
             onSubmit={handleSubmit}
-            className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-2 shadow-2xl focus-within:border-primary/50 transition-all group flex items-end gap-2"
+            className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl p-1.5 shadow-2xl focus-within:border-primary/45 focus-within:ring-4 focus-within:ring-primary/5 transition-all group flex items-end gap-2"
           >
+            {/* 图片输入按钮（Compact 气泡弹窗式） */}
             <ReferenceImageInput
               compact
               value={selectedImage || ''}
@@ -449,6 +458,8 @@ export function ChatModule() {
               allowUpload={allowImageDataUrl}
               disabledReason={imageDisabledReason}
             />
+
+            {/* 自适应多行 textarea */}
             <textarea
               ref={textareaRef}
               value={input}
@@ -460,41 +471,45 @@ export function ChatModule() {
               }}
               placeholder={selectedImage ? 'Ask about this image...' : 'Message ModelScope...'}
               rows={1}
-              className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-2 text-base leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
+              className="flex-1 min-h-[24px] max-h-48 bg-transparent border-none focus:ring-0 focus:outline-none resize-none py-2 px-1 text-sm leading-relaxed overflow-y-auto scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
             />
+
+            {/* 深度思考药丸 Toggle 开关 (精致紧凑版) */}
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={toggleCurrentReasoning}
               className={cn(
-                'h-9 shrink-0 rounded-xl px-2 text-[10px] gap-1 mb-0.5',
+                'h-9 shrink-0 rounded-xl px-2.5 text-[10px] gap-1 transition-colors duration-200 mb-0.5',
                 isCurrentlyReasoning
-                  ? 'bg-primary/10 text-primary hover:bg-primary/15'
+                  ? 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15'
                   : 'text-muted-foreground hover:bg-muted'
               )}
               title={thinkingStatusLabel}
             >
-              <BrainCircuit className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{thinkingStatusLabel}</span>
+              <BrainCircuit className="h-4 w-4" />
+              <span className="hidden sm:inline">Think</span>
             </Button>
+
+            {/* 发送/停止动作按钮 */}
             {isLoading ? (
               <Button
                 type="button"
                 onClick={handleStop}
                 size="icon"
-                className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5 bg-muted text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                className="h-9 w-9 shrink-0 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/15 transition-colors duration-200 mb-0.5 flex items-center justify-center"
               >
-                <Square className="h-4 w-4 fill-current" />
+                <Square className="h-3.5 w-3.5 fill-current" />
               </Button>
             ) : (
               <Button
                 type="submit"
                 size="icon"
                 disabled={!input.trim() && !selectedImage}
-                className="h-9 w-9 shrink-0 rounded-xl transition-all mb-0.5"
+                className="h-9 w-9 shrink-0 rounded-xl transition-colors duration-200 mb-0.5 flex items-center justify-center"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-3.5 w-3.5" />
               </Button>
             )}
           </form>

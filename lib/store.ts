@@ -78,6 +78,8 @@ interface AppState {
   setEnableThinking: (enabled: boolean) => void;
   customThinkingIntent: ThinkingIntent;
   setCustomThinkingIntent: (intent: ThinkingIntent) => void;
+  visionThinkingIntent: ThinkingIntent;
+  setVisionThinkingIntent: (intent: ThinkingIntent) => void;
 
   // Session Management
   sessions: Record<string, Session>;
@@ -117,6 +119,8 @@ export const useAppStore = create<AppState>()(
       setEnableThinking: (enableThinking) => set({ enableThinking }),
       customThinkingIntent: 'auto',
       setCustomThinkingIntent: (customThinkingIntent) => set({ customThinkingIntent }),
+      visionThinkingIntent: 'auto',
+      setVisionThinkingIntent: (visionThinkingIntent) => set({ visionThinkingIntent }),
 
       sessions: {},
       activeSessionId: null,
@@ -201,6 +205,7 @@ export const useAppStore = create<AppState>()(
         imageModelId: state.imageModelId,
         enableThinking: state.enableThinking,
         customThinkingIntent: state.customThinkingIntent,
+        visionThinkingIntent: state.visionThinkingIntent,
         sessions: state.sessions,
         activeSessionId: state.activeSessionId,
       }),
