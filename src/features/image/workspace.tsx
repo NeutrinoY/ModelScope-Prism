@@ -137,9 +137,16 @@ export function ImageWorkspace() {
       },
     };
 
+    const requestBodyBytes = new TextEncoder().encode(JSON.stringify(request)).length;
+    if (requestBodyBytes > IMAGE_INPUT_LIMITS.aigcRequestBodySoftLimitBytes) {
+      toast.error('Request is too large. Remove or compress input images and retry.');
+      return;
+    }
+
     const ok = await task.submit(request, active.id);
     if (ok) {
       setPrompt('');
+      setImageInputs([]);
     }
   };
 
