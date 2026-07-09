@@ -47,6 +47,9 @@ const WORKSPACE_LABELS: Record<WorkspaceType, string> = {
   image: 'AIGC',
 };
 
+const PRISM_VERSION = process.env.NEXT_PUBLIC_PRISM_VERSION ?? '0.0.0';
+const DISPLAY_VERSION = `v${PRISM_VERSION.replace(/\.0$/, '')}`;
+
 export function SessionList({
   onNavigate,
   headerAction,
@@ -299,8 +302,15 @@ export function SessionList({
         )}
       </div>
 
-      <div className="border-t border-border/40 px-4 py-3">
-        <p className="text-[10px] font-medium text-text-muted/45">ModelScope Prism 2.0</p>
+      <div className="border-t border-border/40 px-4 py-3.5 bg-surface-muted/10">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[11px] font-semibold tracking-wide text-text-secondary/80">
+            ModelScope Prism
+          </span>
+          <span className="rounded-full border border-border/50 bg-surface-elevated/50 px-2 py-0.5 text-[9px] font-mono text-text-muted">
+            {DISPLAY_VERSION}
+          </span>
+        </div>
       </div>
     </div>
   );

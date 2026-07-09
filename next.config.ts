@@ -1,6 +1,14 @@
 import type { NextConfig } from 'next';
+import { readFileSync } from 'node:fs';
+
+const packageJson = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+) as { version?: string };
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_PRISM_VERSION: packageJson.version ?? '0.0.0',
+  },
   poweredByHeader: false,
   async headers() {
     const isDev = process.env.NODE_ENV !== 'production';
