@@ -41,20 +41,22 @@ export function Sidebar({ customTrigger }: { customTrigger?: React.ReactNode }) 
         <SheetDescription className="sr-only">
           Session history for the current workspace.
         </SheetDescription>
-        <div className="absolute right-3 top-3.5 z-10">
-          <SheetClose asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-lg"
-              title="Close"
-              aria-label="Close history"
-            >
-              <PanelLeft className="h-4 w-4" />
-            </Button>
-          </SheetClose>
-        </div>
-        <SessionList onNavigate={() => setOpen(false)} />
+        <SessionList
+          onNavigate={() => setOpen(false)}
+          headerAction={
+            <SheetClose asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-lg text-text-muted hover:text-foreground"
+                title="Close"
+                aria-label="Close history"
+              >
+                <PanelLeft className="h-4 w-4" />
+              </Button>
+            </SheetClose>
+          }
+        />
       </SheetContent>
     </Sheet>
   );

@@ -1,6 +1,16 @@
 'use client';
 
-import { Clock, Edit3, Eye, Image as ImageIcon, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import {
+  Check,
+  Clock,
+  Edit3,
+  Eye,
+  Image as ImageIcon,
+  MessageSquare,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -37,7 +47,13 @@ const WORKSPACE_LABELS: Record<WorkspaceType, string> = {
   image: 'AIGC',
 };
 
-export function SessionList({ onNavigate }: { onNavigate?: () => void }) {
+export function SessionList({
+  onNavigate,
+  headerAction,
+}: {
+  onNavigate?: () => void;
+  headerAction?: React.ReactNode;
+}) {
   const currentWorkspace = usePrismStore((state) => state.settings.currentWorkspace);
   const sessions = usePrismStore((state) => state.sessions);
   const activeSessionByWorkspace = usePrismStore((state) => state.activeSessionByWorkspace);
@@ -48,10 +64,17 @@ export function SessionList({ onNavigate }: { onNavigate?: () => void }) {
 
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editTitle, setEditTitle] = React.useState('');
+  const editInputRef = React.useRef<HTMLInputElement>(null);
 
   const workspaceSessions = filterSessionsByType(sessions, currentWorkspace);
   const activeId = activeSessionByWorkspace[currentWorkspace];
   const Icon = WORKSPACE_ICONS[currentWorkspace];
+
+  React.useEffect(() => {
+    if (!editingId) return;
+    editInputRef.current?.focus();
+    editInputRef.current?.select();
+  }, [editingId]);
 
   const handleCreate = () => {
     createSession(currentWorkspace);
@@ -71,15 +94,22 @@ export function SessionList({ onNavigate }: { onNavigate?: () => void }) {
   };
 
   const submitRename = () => {
-    if (editingId && editTitle.trim()) {
-      renameSession(editingId, editTitle);
+    const title = editTitle.trim();
+    if (editingId && title) {
+      renameSession(editingId, title);
     }
     setEditingId(null);
+    setEditTitle('');
+  };
+
+  const cancelRename = () => {
+    setEditingId(null);
+    setEditTitle('');
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border/40 flex items-center justify-between">
+      <div className="p-4 border-b border-border/40 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold tracking-tight">
             {WORKSPACE_LABELS[currentWorkspace]} history
@@ -88,16 +118,19 @@ export function SessionList({ onNavigate }: { onNavigate?: () => void }) {
             {workspaceSessions.length} session{workspaceSessions.length === 1 ? '' : 's'}
           </p>
         </div>
-        <Button
-          onClick={handleCreate}
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 rounded-lg"
-          title="New session"
-          aria-label="New session"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            onClick={handleCreate}
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 rounded-lg text-text-muted hover:text-foreground"
+            title="New session"
+            aria-label="New session"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          {headerAction}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -122,9 +155,11 @@ export function SessionList({ onNavigate }: { onNavigate?: () => void }) {
                 }}
                 className={cn(
                   'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors',
-                  activeId === session.id
-                    ? 'bg-accent-soft border border-accent/20 shadow-sm'
-                    : 'hover:bg-surface-muted/60 border border-transparent'
+                  editingId === session.id
+                    ? 'bg-surface-muted/70 border border-accent/35 shadow-focus'
+                    : activeId === session.id
+                      ? 'bg-accent-soft border border-accent/20 shadow-sm'
+                      : 'hover:bg-surface-muted/60 border border-transparent'
                 )}
               >
                 <div
@@ -140,11 +175,17 @@ export function SessionList({ onNavigate }: { onNavigate?: () => void }) {
                 <div className="flex-1 overflow-hidden">
                   {editingId === session.id ? (
                     <input
-                      className="w-full bg-transparent border-none focus:outline-none text-sm font-medium"
+                      ref={editInputRef}
+                      className="w-full bg-transparent border-none focus:outline-none text-sm font-medium pr-16"
                       value={editTitle}
                       onChange={(event) => setEditTitle(event.target.value)}
-                      onBlur={submitRename}
-                      onKeyDown={(event) => event.key === 'Enter' && submitRename()}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== 'Escape') return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (event.key === 'Enter') submitRename();
+                        if (event.key === 'Escape') cancelRename();
+                      }}
                       onClick={(event) => event.stopPropagation()}
                     />
                   ) : (
@@ -155,64 +196,111 @@ export function SessionList({ onNavigate }: { onNavigate?: () => void }) {
                   </p>
                 </div>
 
-                <div className="absolute right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-md hover:bg-background/80"
-                    onClick={(event) => startRename(event, session)}
-                    title="Rename"
-                    aria-label="Rename session"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                  </Button>
-
-                  <Dialog>
-                    <DialogTrigger asChild>
+                <div
+                  className={cn(
+                    'absolute right-2 flex gap-1 transition-opacity',
+                    editingId === session.id
+                      ? 'opacity-100'
+                      : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
+                  )}
+                >
+                  {editingId === session.id ? (
+                    <>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 rounded-md hover:text-danger hover:bg-danger/10"
-                        onClick={(event) => event.stopPropagation()}
-                        title="Delete"
-                        aria-label="Delete session"
+                        className="h-7 w-7 rounded-md text-text-muted hover:text-success hover:bg-success/10"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          submitRename();
+                        }}
+                        title="Save"
+                        aria-label="Save session name"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Check className="h-3.5 w-3.5" />
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent onClick={(event) => event.stopPropagation()}>
-                      <DialogHeader>
-                        <DialogTitle>Delete session?</DialogTitle>
-                        <DialogDescription>
-                          This permanently deletes “{session.title}”. This cannot be undone.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button variant="outline" onClick={(event) => event.stopPropagation()}>
-                            Cancel
-                          </Button>
-                        </DialogClose>
-                        <DialogClose asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md text-text-muted hover:text-danger hover:bg-danger/10"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          cancelRename();
+                        }}
+                        title="Cancel"
+                        aria-label="Cancel rename"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md hover:bg-background/80"
+                        onClick={(event) => startRename(event, session)}
+                        title="Rename"
+                        aria-label="Rename session"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </Button>
+
+                      <Dialog>
+                        <DialogTrigger asChild>
                           <Button
-                            variant="destructive"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              deleteSession(session.id);
-                              toast.info('Session deleted');
-                            }}
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-md hover:text-danger hover:bg-danger/10"
+                            onClick={(event) => event.stopPropagation()}
+                            title="Delete"
+                            aria-label="Delete session"
                           >
-                            Delete
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                        </DialogClose>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                        </DialogTrigger>
+                        <DialogContent onClick={(event) => event.stopPropagation()}>
+                          <DialogHeader>
+                            <DialogTitle>Delete session?</DialogTitle>
+                            <DialogDescription>
+                              This permanently deletes “{session.title}”. This cannot be undone.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter>
+                            <DialogClose asChild>
+                              <Button
+                                variant="outline"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                Cancel
+                              </Button>
+                            </DialogClose>
+                            <DialogClose asChild>
+                              <Button
+                                variant="destructive"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  deleteSession(session.id);
+                                  toast.info('Session deleted');
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </DialogClose>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </>
+                  )}
                 </div>
               </div>
             );
           })
         )}
+      </div>
+
+      <div className="border-t border-border/40 px-4 py-3">
+        <p className="text-[10px] font-medium text-text-muted/45">ModelScope Prism 2.0</p>
       </div>
     </div>
   );
