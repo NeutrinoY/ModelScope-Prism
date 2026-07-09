@@ -3,7 +3,6 @@
 import { Eye } from 'lucide-react';
 import { ConversationComposer } from '@/components/shared/conversation/conversation-composer';
 import { ConversationMessageList } from '@/components/shared/conversation/conversation-message-list';
-import { ConversationModelSelector } from '@/components/shared/conversation/conversation-model-selector';
 import { useConversationWorkspace } from '@/components/shared/conversation/use-conversation-workspace';
 import { ErrorNotice } from '@/components/shared/error-notice';
 import { openSettingsDialog } from '@/features/settings/hooks/use-settings-dialog';
@@ -17,15 +16,6 @@ export function VisionWorkspace() {
 
   return (
     <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full relative overflow-hidden h-full">
-      <ConversationModelSelector
-        modelId={workspace.modelId}
-        onModelChange={workspace.setModelId}
-        thinking={workspace.settings.thinking}
-        hasMessages={workspace.messages.length > 0}
-        onOpenSettings={openSettingsDialog}
-        layoutId="vision-model-selector"
-      />
-
       <ConversationMessageList
         messages={workspace.messages}
         isStreaming={workspace.isStreaming}
