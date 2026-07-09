@@ -22,11 +22,15 @@ probe-report-*.json
 
 # production
 /build
+/dist
+/.turbo
 
 # misc
 .DS_Store
 *.pem
+*.log
 AGENTS-result.md
+skills-lock.json
 
 # debug
 npm-debug.log*

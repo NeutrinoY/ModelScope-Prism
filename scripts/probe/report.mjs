@@ -1,158 +1,149 @@
-import fs from 'node:fs';
-import path from 'node:path';
+/**
+ * Derive a profile suggestion from probe results (pure data transform).
+ * The output is a starting point for a built-in ModelProfile; it enters
+ * the codebase only through code review, never automatically.
+ */
 
-const DEFAULT_MAX_TOKENS = 16_384;
-const HIGH_MAX_TOKENS = 65_536;
-
-export function nowIso() {
-  return new Date().toISOString();
+function outcome(results, id) {
+  return results.find((result) => result.id === id);
 }
 
-export function slugifyModelId(modelId) {
-  return modelId.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+function hasReasoning(result) {
+  return Boolean(result?.ok && result.reasoning && result.reasoning.trim().length > 0);
 }
 
-export function inferProvider(modelId) {
-  return modelId.split('/')[0] || 'unknown';
+function reasoningDisabled(result) {
+  return Boolean(result?.ok && (!result.reasoning || result.reasoning.trim().length === 0));
 }
 
-export function inferLabel(modelId) {
-  const shortName = modelId.split('/').pop() || modelId;
-  return shortName.replace(/[-_]/g, ' ');
+function isConclusiveFailure(result) {
+  return Boolean(
+    result &&
+      !result.ok &&
+      ['rejected', 'model_unavailable'].includes(result.error?.kind ?? 'unknown')
+  );
 }
 
-export function buildProfileSnippet({
-  modelId,
-  provider,
-  label,
-  modalities = ['text'],
-  availability,
-  input,
-  thinking,
-  output,
-}) {
-  const modalityText = modalities.map((modality) => `'${modality}'`).join(', ');
-  const chat = availability?.chat === true;
-  const status = availability?.status || 'unknown';
-  const text = input?.text !== false;
-  const imageUrl = input?.imageUrl === true;
-  const imageDataUrl = input?.imageDataUrl === true;
-  const control = thinking?.control || 'none';
-  const defaultEnabled = thinking?.defaultEnabled === true;
-  const canDisable = thinking?.canDisable !== false;
-  const maxTokenParam = output?.maxTokenParam || 'none';
-
-  return `'${modelId}': {
-  id: '${modelId}',
-  label: '${label || inferLabel(modelId)}',
-  provider: '${provider || inferProvider(modelId)}',
-  source: 'builtin',
-  modalities: [${modalityText}],
-  availability: { chat: ${chat}, status: '${status}' },
-  input: { text: ${text}, imageUrl: ${imageUrl}, imageDataUrl: ${imageDataUrl} },
-  thinking: { control: '${control}', defaultEnabled: ${defaultEnabled}, canDisable: ${canDisable} },
-  output: { maxTokenParam: '${maxTokenParam}', defaultMaxTokens: ${DEFAULT_MAX_TOKENS}, highMaxTokens: ${HIGH_MAX_TOKENS} },
-}`;
+function capabilityFromCase(result) {
+  if (!result) return 'unknown';
+  if (result.ok) return true;
+  return isConclusiveFailure(result) ? false : 'unknown';
 }
 
-export function buildReport(options) {
-  const capability = options.capability || {
-    availability: {
-      chat: false,
-      status: 'unavailable',
-      latencyMs: null,
+/** Determine which thinking format can enable and disable reasoning. */
+export function deriveThinkingProfile(results) {
+  const baseline = outcome(results, 'baseline');
+  const observedByDefault = hasReasoning(baseline);
+
+  const formats = [
+    {
+      format: 'enable_thinking',
+      on: 'thinking:enable_thinking:on',
+      off: 'thinking:enable_thinking:off',
     },
-    input: {
-      text: false,
-      imageUrl: false,
-      imageDataUrl: false,
+    {
+      format: 'chat_template_kwargs.enable_thinking',
+      on: 'thinking:chat_template_kwargs:on',
+      off: 'thinking:chat_template_kwargs:off',
     },
-    thinking: {
-      control: 'none',
-      defaultEnabled: false,
-      canDisable: true,
-      notes: 'No probe capability was supplied.',
-    },
-    output: {
-      maxTokenParam: 'none',
-      preferredMaxTokens: null,
-    },
-  };
-
-  const modalities =
-    options.modalities ||
-    (capability.input.imageUrl || capability.input.imageDataUrl ? ['text', 'image'] : ['text']);
-  const profileSnippet = buildProfileSnippet({
-    modelId: options.modelId,
-    provider: options.provider,
-    label: options.label,
-    modalities,
-    availability: capability.availability,
-    input: capability.input,
-    thinking: capability.thinking,
-    output: capability.output,
-  });
-
-  return {
-    generatedAt: options.generatedAt || nowIso(),
-    modelId: options.modelId,
-    provider: options.provider || inferProvider(options.modelId),
-    capability,
-    diagnostics: options.diagnostics || {},
-    tests: options.tests || {},
-    profileSnippet,
-  };
-}
-
-export function buildMarkdownOverview(report) {
-  const capability = report.capability;
-  const lines = [
-    `# ${inferLabel(report.modelId)} Probe Overview`,
-    '',
-    `- Model: \`${report.modelId}\``,
-    `- Generated: ${report.generatedAt}`,
-    '',
-    '## Compatibility',
-    '',
-    `- Chat: ${capability.availability.chat ? 'yes' : 'no'}`,
-    `- Status: ${capability.availability.status}`,
-    `- Avg latency: ${capability.availability.latencyMs ?? 'unknown'}ms`,
-    `- Image URL input: ${capability.input.imageUrl ? 'yes' : 'no'}`,
-    `- Image data URL input: ${capability.input.imageDataUrl ? 'yes' : 'no'}`,
-    `- Thinking control: ${capability.thinking.control}`,
-    `- Thinking default enabled: ${capability.thinking.defaultEnabled ? 'yes' : 'no'}`,
-    `- Thinking can disable: ${capability.thinking.canDisable ? 'yes' : 'no'}`,
-    `- Output token parameter: ${capability.output.maxTokenParam}`,
-    `- Preferred max tokens: ${capability.output.preferredMaxTokens ?? 'none'}`,
-    '',
-    '## Recommended Profile',
-    '',
-    '```ts',
-    report.profileSnippet,
-    '```',
-    '',
-    '## Notes',
-    '',
-    `- ${capability.thinking.notes}`,
+    { format: 'thinking.type', on: 'thinking:thinking.type:on', off: 'thinking:thinking.type:off' },
   ];
 
-  return `${lines.join('\n')}\n`;
+  const observations = formats.map((candidate) => {
+    const onResult = outcome(results, candidate.on);
+    const offResult = outcome(results, candidate.off);
+    return {
+      format: candidate.format,
+      canEnable: hasReasoning(onResult),
+      canDisable: reasoningDisabled(offResult),
+    };
+  });
+
+  const fullControl = observations.find((candidate) => candidate.canEnable && candidate.canDisable);
+  if (fullControl) {
+    return {
+      ...fullControl,
+      observedByDefault,
+    };
+  }
+
+  for (const candidate of observations) {
+    if (candidate.canDisable) {
+      return {
+        ...candidate,
+        observedByDefault,
+      };
+    }
+  }
+
+  if (!observedByDefault) {
+    const enablingCandidate = observations.find((candidate) => candidate.canEnable);
+    if (enablingCandidate) {
+      return {
+        ...enablingCandidate,
+        observedByDefault,
+      };
+    }
+  }
+
+  if (observedByDefault) {
+    return {
+      format: 'native_always_on',
+      canEnable: true,
+      canDisable: false,
+      observedByDefault: true,
+    };
+  }
+
+  return { format: 'none', canEnable: false, canDisable: false, observedByDefault: false };
 }
 
-function ensureReportDir(cwd) {
-  const reportDir = path.join(cwd, 'probe-reports');
-  fs.mkdirSync(reportDir, { recursive: true });
-  return reportDir;
+export function deriveInputProfile(results) {
+  const remote = outcome(results, 'input:image_url:remote');
+  const dataUrl = outcome(results, 'input:image_url:data');
+  return {
+    text: Boolean(outcome(results, 'baseline')?.ok),
+    imageUrl: capabilityFromCase(remote),
+    imageDataUrl: capabilityFromCase(dataUrl),
+  };
 }
 
-export function writeReport(report, cwd = process.cwd()) {
-  const reportDir = ensureReportDir(cwd);
-  const baseName = `probe-report-${slugifyModelId(report.modelId)}-${Date.now()}`;
-  const reportName = `${baseName}.json`;
-  const overviewName = `${baseName}.md`;
-  const reportPath = path.join(reportDir, reportName);
-  const overviewPath = path.join(reportDir, overviewName);
-  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8');
-  fs.writeFileSync(overviewPath, buildMarkdownOverview(report), 'utf-8');
-  return { reportName, reportPath, overviewName, overviewPath };
+export function deriveOutputProfile(results) {
+  const maxTokens = outcome(results, 'output:max_tokens');
+  const maxCompletion = outcome(results, 'output:max_completion_tokens');
+  if (maxTokens?.ok) return { param: 'max_tokens' };
+  if (maxCompletion?.ok) return { param: 'max_completion_tokens' };
+  if (isConclusiveFailure(maxTokens) && isConclusiveFailure(maxCompletion)) {
+    return { param: 'none' };
+  }
+  return { param: 'unknown' };
+}
+
+/** Assemble the full report object for one model. */
+export function buildReport(model, results) {
+  const baseline = outcome(results, 'baseline');
+  return {
+    model,
+    probedAt: new Date().toISOString(),
+    reachable: Boolean(baseline?.ok),
+    baselineError: baseline?.ok ? null : (baseline?.error ?? null),
+    profileSuggestion: {
+      id: model,
+      source: 'builtin',
+      input: deriveInputProfile(results),
+      thinking: deriveThinkingProfile(results),
+      output: deriveOutputProfile(results),
+    },
+    cases: results.map((result) => ({
+      id: result.id,
+      group: result.group,
+      description: result.description,
+      ok: result.ok,
+      status: result.status,
+      durationMs: result.durationMs,
+      contentPreview: result.content ? result.content.slice(0, 80) : null,
+      reasoningObserved: hasReasoning(result),
+      error: result.error ?? null,
+    })),
+  };
 }
