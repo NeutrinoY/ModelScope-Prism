@@ -57,13 +57,20 @@ export function useConversationRunner() {
     const profile = getModelProfile(options.modelId);
     const { thinking, outputLimit } = options.settings;
 
-    // Explicit-send rule: auto -> omit the control entirely.
+    const visibleThinkingFormat = resolveVisibleThinkingFormat(profile);
+    const thinkingFormat =
+      profile.source === 'custom'
+        ? (thinking.format ?? visibleThinkingFormat)
+        : visibleThinkingFormat;
+
+    // Explicit-send rule: auto -> omit the control entirely. Built-in profiles
+    // also gate On/Off; if no controllable format is known, send nothing.
     const thinkingControl =
-      thinking.mode === 'auto'
+      thinking.mode === 'auto' || !thinkingFormat
         ? undefined
         : {
             mode: thinking.mode,
-            format: thinking.format ?? resolveVisibleThinkingFormat(profile) ?? 'enable_thinking',
+            format: thinkingFormat,
           };
 
     const outputParam = resolveOutputLimitParam(profile);
