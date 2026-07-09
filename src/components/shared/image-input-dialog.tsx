@@ -28,6 +28,8 @@ type ImageInputDialogProps = {
   hint?: string;
   disabled?: boolean;
   disabledReason?: string;
+  allowRemoteUrl?: boolean;
+  allowDataUrl?: boolean;
 };
 
 export function ImageInputDialog({
@@ -39,6 +41,8 @@ export function ImageInputDialog({
   hint,
   disabled = false,
   disabledReason = 'Image input is not available for this model.',
+  allowRemoteUrl = true,
+  allowDataUrl = true,
 }: ImageInputDialogProps) {
   const [open, setOpen] = useState(false);
   const [urlDraft, setUrlDraft] = useState('');
@@ -58,8 +62,14 @@ export function ImageInputDialog({
   }, [open]);
 
   const atCapacity = values.length >= maxImages;
+  const canAddAnySource = allowRemoteUrl || allowDataUrl;
+  const triggerDisabled = disabled || !canAddAnySource;
 
   const addFromUrl = () => {
+    if (!canAddAnySource) {
+      toast.error(disabledReason);
+      return;
+    }
     const raw = urlDraft.trim();
     if (!raw) {
       toast.error('Enter an image URL first.');
@@ -68,6 +78,14 @@ export function ImageInputDialog({
     const value = toImageInputValue(raw);
     if (!value) {
       toast.error('URL must be http(s) or a data:image base64 URL.');
+      return;
+    }
+    if (value.source === 'remote_url' && !allowRemoteUrl) {
+      toast.error('Remote image URLs are not available for this model.');
+      return;
+    }
+    if (value.source === 'data_url' && !allowDataUrl) {
+      toast.error('Base64 image data is not available for this model.');
       return;
     }
     if (atCapacity) {
@@ -81,6 +99,10 @@ export function ImageInputDialog({
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     event.target.value = '';
+    if (!allowDataUrl) {
+      toast.error('Local image upload is not available for this model.');
+      return;
+    }
     if (files.length === 0) return;
 
     const room = maxImages - values.length;
@@ -117,15 +139,15 @@ export function ImageInputDialog({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        disabled={disabled}
-        aria-label={disabled ? disabledReason : label}
-        title={disabled ? disabledReason : label}
+        disabled={triggerDisabled}
+        aria-label={triggerDisabled ? disabledReason : label}
+        title={triggerDisabled ? disabledReason : label}
         className={cn(
           'relative h-9 w-9 shrink-0 rounded-lg overflow-hidden transition-colors border mb-0.5 grid place-items-center group bg-background',
           values.length > 0
             ? 'border-accent/40 shadow-sm'
             : 'border-transparent hover:bg-accent-soft hover:text-accent text-text-muted',
-          disabled ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'
+          triggerDisabled ? 'cursor-not-allowed opacity-45' : 'cursor-pointer'
         )}
       >
         {values.length > 0 ? (
@@ -205,50 +227,56 @@ export function ImageInputDialog({
 
               {!atCapacity && (
                 <>
-                  <button
-                    type="button"
-                    className="border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center gap-1.5 text-text-muted hover:bg-surface-muted/60 hover:border-accent/50 hover:text-accent transition-colors cursor-pointer group/upload"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <UploadCloud className="h-5 w-5" />
-                    <p className="text-xs font-medium">Click to upload</p>
-                    <p className="text-[10px] opacity-70">
-                      JPG, PNG, WEBP up to {IMAGE_INPUT_LIMITS.maxUploadSizeMb}MB
-                    </p>
-                  </button>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[9px] text-text-muted font-medium uppercase tracking-widest">
-                      or
-                    </span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <LinkIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-                      <Input
-                        value={urlDraft}
-                        onChange={(event) => setUrlDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key !== 'Enter') return;
-                          event.preventDefault();
-                          addFromUrl();
-                        }}
-                        placeholder={placeholder}
-                        className="h-9 text-xs bg-surface-muted/60 border-border pl-8"
-                      />
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="h-9 text-xs shrink-0 px-4"
-                      onClick={addFromUrl}
+                  {allowDataUrl && (
+                    <button
+                      type="button"
+                      className="border-2 border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center gap-1.5 text-text-muted hover:bg-surface-muted/60 hover:border-accent/50 hover:text-accent transition-colors cursor-pointer group/upload"
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      Add
-                    </Button>
-                  </div>
+                      <UploadCloud className="h-5 w-5" />
+                      <p className="text-xs font-medium">Click to upload</p>
+                      <p className="text-[10px] opacity-70">
+                        JPG, PNG, WEBP up to {IMAGE_INPUT_LIMITS.maxUploadSizeMb}MB
+                      </p>
+                    </button>
+                  )}
+
+                  {allowRemoteUrl && allowDataUrl && (
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[9px] text-text-muted font-medium uppercase tracking-widest">
+                        or
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                  )}
+
+                  {allowRemoteUrl && (
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <LinkIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                        <Input
+                          value={urlDraft}
+                          onChange={(event) => setUrlDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Enter') return;
+                            event.preventDefault();
+                            addFromUrl();
+                          }}
+                          placeholder={placeholder}
+                          className="h-9 text-xs bg-surface-muted/60 border-border pl-8"
+                        />
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-9 text-xs shrink-0 px-4"
+                        onClick={addFromUrl}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  )}
                 </>
               )}
 
