@@ -1,6 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Dependencies
 /node_modules
 /.pnpm-store
 /.pnp
@@ -11,42 +9,43 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-/probe-reports/
-probe-report-*.json
-
-# next.js
+# Build output
 /.next/
 /out/
-
-# production
 /build
 /dist
 /.turbo
 
-# misc
-.DS_Store
-*.pem
-*.log
-AGENTS-result.md
-skills-lock.json
+# Environment
+.env*
 
-# debug
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Reports
+/coverage/
+/probe-reports/
+probe-report-*.json
 
-# vercel
+# TypeScript
+*.tsbuildinfo
+
+# Deployment
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# OS
+.DS_Store
+Thumbs.db
 
-# Agents
-.agents
+# Secrets
+*.pem
+
+# Agent tooling
+.agents/
+.claude/
+AGENTS-result.md
+skills-lock.json

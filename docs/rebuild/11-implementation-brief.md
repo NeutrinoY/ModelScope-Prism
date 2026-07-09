@@ -48,14 +48,6 @@ Conversation：04 + 05 + 06 + 08
 
 当前项目是语义源和体验灵魂源。
 
-旧实现参考快照位于：
-
-```text
-legacy-reference/implementation
-```
-
-该目录只能作为语义、体验和上游调用参考，不能作为目标架构或目录结构模板。
-
 继承：
 
 ```text

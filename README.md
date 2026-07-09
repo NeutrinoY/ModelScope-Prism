@@ -2,12 +2,6 @@
 
 This branch is a rebuild handoff skeleton.
 
-The previous implementation has been copied to:
-
-```text
-D:\Code\ModelScope-Prism__legacy_20260709
-```
-
 Start implementation from:
 
 ```text
@@ -22,7 +16,6 @@ This repository intentionally contains:
 
 ```text
 docs/rebuild          Rebuild handoff documents
-legacy-reference      Previous implementation snapshot for reference only
 src/app               Minimal Next.js scaffold
 src/features          Feature entry folders
 src/components        Shared UI/layout/component folders
@@ -31,9 +24,6 @@ scripts               Local developer scripts placeholder
 ```
 
 The old app implementation is no longer part of the runtime scaffold.
-
-The previous implementation is available under `legacy-reference/implementation` for reference,
-but it must not be treated as the target architecture.
 
 ## Commands
 

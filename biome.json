@@ -9,7 +9,6 @@
       "!build",
       "!coverage",
       "!.agents",
-      "!legacy-reference",
       "!.pnpm-store",
       "!pnpm-lock.yaml"
     ]
