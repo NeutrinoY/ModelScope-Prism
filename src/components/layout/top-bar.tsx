@@ -45,7 +45,7 @@ export function TopBar() {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-16 flex items-start justify-center z-40 bg-gradient-to-b from-background to-transparent pointer-events-none pt-4">
+    <div className="fixed top-0 left-0 right-0 h-16 flex items-start justify-center z-40 bg-gradient-to-b from-background to-transparent pointer-events-none pt-4 pr-scrollbar-compensate">
       <div className="pointer-events-auto bg-surface-elevated/60 backdrop-blur-md border border-border rounded-full px-4 md:px-6 py-2 shadow-panel flex items-center gap-2 md:gap-4 transition-colors hover:bg-surface-elevated/90 h-10">
         <Label className="hidden md:block text-xs text-text-muted font-mono uppercase tracking-wider whitespace-nowrap">
           {labels[currentWorkspace]}

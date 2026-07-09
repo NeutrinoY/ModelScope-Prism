@@ -40,15 +40,20 @@ export function ChatWorkspace() {
             </p>
           </div>
         }
-        footer={
-          workspace.error && (
+        footer={(() => {
+          const isAssistantStreaming =
+            workspace.isStreaming &&
+            workspace.messages.length > 0 &&
+            workspace.messages[workspace.messages.length - 1].role === 'assistant';
+          return workspace.error || (workspace.isStreaming && !isAssistantStreaming) ? (
             <ErrorNotice
               error={workspace.error}
+              isRetrying={workspace.isStreaming}
               onOpenSettings={openSettingsDialog}
-              onRetry={workspace.clearError}
+              onRetry={workspace.retry}
             />
-          )
-        }
+          ) : null;
+        })()}
       />
 
       <ConversationComposer

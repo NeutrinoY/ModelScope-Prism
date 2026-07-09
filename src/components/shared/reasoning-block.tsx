@@ -1,10 +1,12 @@
 'use client';
 
 import { BrainCircuit, ChevronRight } from 'lucide-react';
+import { Streamdown } from 'streamdown';
 
 /**
  * Collapsible reasoning display. Open while streaming, collapsed after.
  * Reasoning display is a UI behavior — it never changes the request.
+ * Wrapped in Streamdown to synchronize text animation speed with main body.
  */
 export function ReasoningBlock({
   reasoning,
@@ -23,8 +25,16 @@ export function ReasoningBlock({
           <span>{isStreaming ? 'Thinking…' : 'Reasoning'}</span>
           <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
         </summary>
-        <div className="mt-2 text-[11px] leading-relaxed text-text-muted/90 font-mono whitespace-pre-wrap">
-          {reasoning}
+        <div className="mt-2 text-[11px] leading-relaxed text-text-muted/90 font-mono">
+          <Streamdown
+            isAnimating={isStreaming}
+            caret="block"
+            components={{
+              p: ({ children }) => <span className="whitespace-pre-wrap">{children}</span>,
+            }}
+          >
+            {reasoning}
+          </Streamdown>
         </div>
       </details>
     </div>

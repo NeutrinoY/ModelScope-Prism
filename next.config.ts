@@ -1,6 +1,10 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  reactCompiler: true,
+  turbopack: {
+    root: process.cwd(),
+  },
   poweredByHeader: false,
   async headers() {
     const isDev = process.env.NODE_ENV !== 'production';

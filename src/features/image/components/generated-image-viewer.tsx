@@ -24,7 +24,9 @@ export function GeneratedImageViewer({
   onClose: () => void;
 }) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const currentIndex = image ? gallery.findIndex((item) => item.id === image.id) : -1;
+  const [displayedImage, setDisplayedImage] = useState<GeneratedImage | null>(image);
+  const activeImage = image ?? displayedImage;
+  const currentIndex = activeImage ? gallery.findIndex((item) => item.id === activeImage.id) : -1;
   const canGoPrevious = currentIndex > 0;
   const canGoNext = currentIndex >= 0 && currentIndex < gallery.length - 1;
 
@@ -38,6 +40,10 @@ export function GeneratedImageViewer({
     },
     [currentIndex, gallery, onNavigate]
   );
+
+  useEffect(() => {
+    if (image) setDisplayedImage(image);
+  }, [image]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -82,7 +88,11 @@ export function GeneratedImageViewer({
     <Dialog open={!!image} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         hideClose
-        className="max-w-[95vw] h-[95vh] p-0 border-none bg-transparent shadow-none flex flex-col items-center justify-center"
+        onAnimationEnd={(event) => {
+          if (event.currentTarget !== event.target) return;
+          if (!image) setDisplayedImage(null);
+        }}
+        className="prism-image-viewer max-w-[95vw] h-[95vh] p-0 border-none bg-transparent shadow-none flex flex-col items-center justify-center"
       >
         <DialogTitle className="sr-only">Image view</DialogTitle>
         <div
@@ -91,7 +101,7 @@ export function GeneratedImageViewer({
             if (event.target === event.currentTarget) onClose();
           }}
         >
-          {image && (
+          {activeImage && (
             <>
               <div className="relative flex items-center justify-center w-full h-full px-12">
                 <Button
@@ -110,13 +120,13 @@ export function GeneratedImageViewer({
 
                 <AnimatePresence mode="wait">
                   <motion.img
-                    key={image.id}
+                    key={activeImage.id}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2, ease: 'easeOut' }}
-                    src={image.url}
-                    alt={image.prompt}
+                    src={activeImage.url}
+                    alt={activeImage.prompt}
                     className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-image"
                   />
                 </AnimatePresence>
@@ -141,31 +151,31 @@ export function GeneratedImageViewer({
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
-                  <p className="text-sm font-medium line-clamp-2" title={image.prompt}>
-                    {image.prompt}
+                  <p className="text-sm font-medium line-clamp-2" title={activeImage.prompt}>
+                    {activeImage.prompt}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted font-mono">
-                    <span>{image.modelId.split('/').pop()}</span>
-                    {image.size && (
+                    <span>{activeImage.modelId.split('/').pop()}</span>
+                    {activeImage.size && (
                       <>
                         <span className="w-1 h-1 rounded-full bg-text-muted/50 hidden md:block" />
                         <span className="bg-surface-muted px-1.5 py-0.5 rounded text-[10px]">
-                          {image.size}
+                          {activeImage.size}
                         </span>
                       </>
                     )}
-                    {image.requestMeta?.seed !== undefined && (
+                    {activeImage.requestMeta?.seed !== undefined && (
                       <span className="bg-surface-muted px-1.5 py-0.5 rounded text-[10px]">
-                        seed {image.requestMeta.seed}
+                        seed {activeImage.requestMeta.seed}
                       </span>
                     )}
                     <span className="w-1 h-1 rounded-full bg-text-muted/50 hidden md:block" />
-                    <span>{new Date(image.createdAt).toLocaleString()}</span>
+                    <span>{new Date(activeImage.createdAt).toLocaleString()}</span>
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0 justify-end border-t border-border/20 pt-2 md:border-none md:pt-0">
                   <Button
-                    onClick={() => copyPrompt(image.prompt)}
+                    onClick={() => copyPrompt(activeImage.prompt)}
                     variant="secondary"
                     size="icon"
                     className="rounded-lg h-8 w-8 md:h-9 md:w-9"
@@ -175,7 +185,7 @@ export function GeneratedImageViewer({
                     <Copy className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => downloadImage(image)}
+                    onClick={() => downloadImage(activeImage)}
                     variant="secondary"
                     size="icon"
                     className="rounded-lg h-8 w-8 md:h-9 md:w-9"

@@ -2,10 +2,12 @@
 
 import { Bot, User } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { MarkdownRenderer } from '@/components/shared/markdown-renderer';
 import { ReasoningBlock } from '@/components/shared/reasoning-block';
 import type { ConversationMessage } from '@/lib/contracts';
 import { cn } from '@/lib/utils';
+import { motionDurations, motionEase } from '@/lib/config/motion';
 
 /**
  * Shared message list for Chat and Vision: renders text and multimodal
@@ -41,7 +43,9 @@ function MessageBubble({
             : 'bg-surface/80 border border-border/60'
         )}
       >
-        {reasoning && <ReasoningBlock reasoning={reasoning} isStreaming={isStreaming} />}
+        {reasoning && (
+          <ReasoningBlock reasoning={reasoning} isStreaming={isStreaming && !message.content} />
+        )}
 
         {Array.isArray(message.content) ? (
           <div className="space-y-3">
@@ -63,7 +67,7 @@ function MessageBubble({
         ) : isUser ? (
           <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <MarkdownRenderer content={message.content} />
+          <MarkdownRenderer content={message.content} isStreaming={isStreaming} />
         )}
       </div>
     </div>
@@ -105,7 +109,7 @@ export function ConversationMessageList({
     const { scrollTop, scrollHeight, clientHeight } = container;
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
     if (isNearBottom || !isStreaming) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      container.scrollTop = container.scrollHeight;
     }
   }, [messages, isStreaming]);
 
@@ -114,7 +118,10 @@ export function ConversationMessageList({
 
   return (
     <div className="flex-1 relative min-h-0">
-      <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto p-4">
+      <div
+        ref={scrollContainerRef}
+        className="absolute inset-0 overflow-y-auto p-4 prism-scroll-container"
+      >
         <div className="space-y-6 min-h-full max-w-3xl mx-auto relative">
           {messages.length === 0 && emptyState}
 
@@ -130,7 +137,18 @@ export function ConversationMessageList({
 
           {waitingForFirstDelta && <StreamingPlaceholder />}
 
-          {footer}
+          <AnimatePresence mode="wait">
+            {footer && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: motionDurations.fast, ease: motionEase.standard }}
+              >
+                {footer}
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div ref={bottomRef} className="h-4" />
         </div>
       </div>

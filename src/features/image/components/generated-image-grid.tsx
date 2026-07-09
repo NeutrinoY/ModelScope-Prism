@@ -53,17 +53,20 @@ export function GeneratedImageGrid({
             <img
               src={image.url}
               alt={image.prompt}
-              className="w-full h-auto block transition-transform duration-700 group-hover:scale-105"
+              className="w-full h-auto block transition-transform duration-[450ms] ease-[var(--motion-ease-standard)] group-hover:scale-[1.03]"
               loading="lazy"
             />
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 z-10">
-              <p className="text-white text-xs line-clamp-2 mb-3 font-medium">{image.prompt}</p>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-white/70 font-mono bg-white/10 px-2 py-0.5 rounded-full backdrop-blur-md">
+            <div className="absolute inset-0 flex flex-col justify-end p-4 z-10">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-[450ms] ease-[var(--motion-ease-standard)]" />
+              <p className="relative text-white text-xs line-clamp-2 mb-3 font-medium opacity-0 group-hover:opacity-100 translate-y-[2px] group-hover:translate-y-0 transition-all duration-[450ms] ease-[var(--motion-ease-standard)]">
+                {image.prompt}
+              </p>
+              <div className="relative flex items-center justify-between">
+                <span className="text-[10px] text-white/70 font-mono bg-white/10 border border-white/10 px-2 py-0.5 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 translate-y-[2px] group-hover:translate-y-0 transition-all duration-[450ms] ease-[var(--motion-ease-standard)]">
                   {image.modelId.split('/').pop()}
                 </span>
-                <Maximize2 className="h-4 w-4 text-white/70" />
+                <Maximize2 className="h-4 w-4 text-white/70 opacity-0 group-hover:opacity-100 translate-y-[2px] group-hover:translate-y-0 transition-all duration-[450ms] ease-[var(--motion-ease-standard)]" />
               </div>
             </div>
           </motion.div>

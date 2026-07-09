@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "streamdown/styles.css";
+
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/cjk/dist/*.js";
 
 @plugin "@tailwindcss/typography";
 
@@ -144,6 +148,14 @@
   }
 }
 
+.pr-scrollbar-compensate {
+  padding-right: var(--removed-body-scroll-bar-size, 0px);
+}
+
+.prism-scroll-container {
+  overflow-anchor: auto;
+}
+
 body {
   background: hsl(var(--background));
   color: hsl(var(--text-primary));
@@ -212,40 +224,44 @@ body {
 @keyframes prism-dialog-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.96);
+    scale: 0.96;
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    scale: 1;
   }
 }
 
 @keyframes prism-dialog-out {
   from {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    scale: 1;
   }
   to {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.96);
+    scale: 0.96;
   }
 }
 
 @keyframes prism-slide-in-left {
   from {
-    transform: translateX(-100%);
+    opacity: 0;
+    transform: translateX(-24px);
   }
   to {
+    opacity: 1;
     transform: translateX(0);
   }
 }
 
 @keyframes prism-slide-out-left {
   from {
+    opacity: 1;
     transform: translateX(0);
   }
   to {
-    transform: translateX(-100%);
+    opacity: 0;
+    transform: translateX(-24px);
   }
 }
 
@@ -328,11 +344,18 @@ body {
   animation: prism-dialog-out var(--motion-duration-fast) var(--motion-ease-exit);
 }
 
+.prism-image-viewer[data-state="open"] {
+  animation: prism-dialog-in var(--motion-duration-slow) var(--motion-ease-emphasis);
+}
+.prism-image-viewer[data-state="closed"] {
+  animation: prism-dialog-out var(--motion-duration-base) var(--motion-ease-exit);
+}
+
 .prism-sheet-left[data-state="open"] {
-  animation: prism-slide-in-left var(--motion-duration-slow) var(--motion-ease-standard);
+  animation: prism-slide-in-left var(--motion-duration-base) var(--motion-ease-standard);
 }
 .prism-sheet-left[data-state="closed"] {
-  animation: prism-slide-out-left var(--motion-duration-base) var(--motion-ease-exit);
+  animation: prism-slide-out-left var(--motion-duration-fast) var(--motion-ease-exit);
 }
 .prism-sheet-right[data-state="open"] {
   animation: prism-slide-in-right var(--motion-duration-slow) var(--motion-ease-standard);

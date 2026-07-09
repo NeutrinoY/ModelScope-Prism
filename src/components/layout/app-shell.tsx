@@ -65,11 +65,11 @@ export function AppShell() {
         )}
       </div>
 
-      <div className="fixed bottom-10 left-0 right-0 z-40 hidden md:flex justify-center pointer-events-none">
+      <div className="fixed bottom-10 left-0 right-0 z-40 hidden md:flex justify-center pointer-events-none pr-scrollbar-compensate">
         <Dock />
       </div>
 
-      <div className="fixed bottom-2 left-0 right-0 z-30 hidden md:flex justify-center pointer-events-none">
+      <div className="fixed bottom-2 left-0 right-0 z-30 hidden md:flex justify-center pointer-events-none pr-scrollbar-compensate">
         <p className="text-[9px] text-text-muted/25 uppercase tracking-[0.2em] font-bold">
           Powered by ModelScope API-Inference
         </p>

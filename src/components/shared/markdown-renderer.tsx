@@ -1,17 +1,26 @@
 'use client';
 
-import ReactMarkdown from 'react-markdown';
+import { Streamdown } from 'streamdown';
+import { cjk } from '@streamdown/cjk';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 
 /**
  * Shared Markdown renderer for assistant output: GFM tables/lists plus
  * highlighted code blocks. Kept independent so the highlighter can be
  * swapped later (docs/rebuild/10).
+ * Swapped with Streamdown for fluid word-by-word fade-in streaming.
  */
-export function MarkdownRenderer({ content, className }: { content: string; className?: string }) {
+export function MarkdownRenderer({
+  content,
+  className,
+  isStreaming,
+}: {
+  content: string;
+  className?: string;
+  isStreaming?: boolean;
+}) {
   return (
     <div
       className={cn(
@@ -19,8 +28,10 @@ export function MarkdownRenderer({ content, className }: { content: string; clas
         className
       )}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+      <Streamdown
+        plugins={{ cjk }}
+        isAnimating={isStreaming}
+        caret="block"
         components={{
           code({ inline, className: codeClassName, children, ...props }: any) {
             const match = /language-(\w+)/.exec(codeClassName || '');
@@ -54,7 +65,7 @@ export function MarkdownRenderer({ content, className }: { content: string; clas
         }}
       >
         {content}
-      </ReactMarkdown>
+      </Streamdown>
     </div>
   );
 }
