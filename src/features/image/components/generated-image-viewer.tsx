@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Copy, Download, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -23,17 +23,20 @@ export function GeneratedImageViewer({
   onNavigate: (image: GeneratedImage) => void;
   onClose: () => void;
 }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const currentIndex = image ? gallery.findIndex((item) => item.id === image.id) : -1;
+  const canGoPrevious = currentIndex > 0;
+  const canGoNext = currentIndex >= 0 && currentIndex < gallery.length - 1;
+
   const navigate = useCallback(
     (direction: number) => {
-      if (!image) return;
-      const currentIndex = gallery.findIndex((item) => item.id === image.id);
       if (currentIndex === -1) return;
       const nextIndex = currentIndex + direction;
       if (nextIndex >= 0 && nextIndex < gallery.length) {
         onNavigate(gallery[nextIndex]);
       }
     },
-    [image, gallery, onNavigate]
+    [currentIndex, gallery, onNavigate]
   );
 
   useEffect(() => {
@@ -49,6 +52,30 @@ export function GeneratedImageViewer({
   const copyPrompt = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Prompt copied');
+  };
+
+  const downloadImage = async (target: GeneratedImage) => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const response = await fetch(target.url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = `${target.modelId.split('/').pop() || 'image'}-${target.id}.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast.success('Download started');
+    } catch {
+      window.open(target.url, '_blank', 'noopener,noreferrer');
+      toast.error('Direct download was blocked. Opened the image instead.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -71,6 +98,7 @@ export function GeneratedImageViewer({
                   variant="ghost"
                   size="icon"
                   className="absolute left-2 h-12 w-12 rounded-full bg-background/20 hover:bg-background/40 backdrop-blur-md text-white border border-white/10"
+                  disabled={!canGoPrevious}
                   onClick={(event) => {
                     event.stopPropagation();
                     navigate(-1);
@@ -97,6 +125,7 @@ export function GeneratedImageViewer({
                   variant="ghost"
                   size="icon"
                   className="absolute right-2 h-12 w-12 rounded-full bg-background/20 hover:bg-background/40 backdrop-blur-md text-white border border-white/10"
+                  disabled={!canGoNext}
                   onClick={(event) => {
                     event.stopPropagation();
                     navigate(1);
@@ -146,10 +175,11 @@ export function GeneratedImageViewer({
                     <Copy className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => window.open(image.url, '_blank')}
+                    onClick={() => downloadImage(image)}
                     variant="secondary"
                     size="icon"
                     className="rounded-lg h-8 w-8 md:h-9 md:w-9"
+                    disabled={isDownloading}
                     title="Download"
                     aria-label="Download image"
                   >

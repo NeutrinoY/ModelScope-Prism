@@ -21,6 +21,7 @@ export const IMAGE_INPUT_LIMITS = {
   uploadQuality: 0.8,
   conversationMaxImages: 4,
   imageEditMaxImages: 4,
+  aigcRequestBodySoftLimitBytes: 14_000_000,
 } as const;
 
 /** AIGC size presets offered by the parameter panel (docs range hints only). */

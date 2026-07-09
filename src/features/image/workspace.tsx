@@ -63,6 +63,10 @@ export function ImageWorkspace() {
   const modelId = session?.modelId ?? modelDefaults.imageModelId;
   const settings = session?.settings ?? imageDefaults;
   const gallery = session?.images ?? [];
+  const activeSessionId = session?.id;
+  const isCurrentSessionGenerating =
+    task.isGenerating && Boolean(activeSessionId && task.activeTask?.sessionId === activeSessionId);
+  const isAnotherSessionGenerating = task.isGenerating && !isCurrentSessionGenerating;
 
   const updateSettings = (update: Partial<ImageSessionSettings>) => {
     const store = usePrismStore.getState();
@@ -137,9 +141,16 @@ export function ImageWorkspace() {
       },
     };
 
+    const estimatedBodyBytes = new TextEncoder().encode(JSON.stringify(request)).length;
+    if (estimatedBodyBytes > IMAGE_INPUT_LIMITS.aigcRequestBodySoftLimitBytes) {
+      toast.error('Request is too large. Remove or compress input images and retry.');
+      return;
+    }
+
     const ok = await task.submit(request, active.id);
     if (ok) {
       setPrompt('');
+      setImageInputs([]);
     }
   };
 
@@ -163,7 +174,7 @@ export function ImageWorkspace() {
       {/* Left: gallery + composer */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
         <div className="flex-1 overflow-y-auto min-h-0 pb-4 pt-4 px-4">
-          {gallery.length === 0 && !task.isGenerating ? (
+          {gallery.length === 0 && !isCurrentSessionGenerating ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
               <div className="p-4 rounded-full bg-surface-muted/60 border border-border">
                 <Sparkles className="h-8 w-8" />
@@ -179,7 +190,7 @@ export function ImageWorkspace() {
           ) : (
             <GeneratedImageGrid
               images={gallery}
-              isGenerating={task.isGenerating}
+              isGenerating={isCurrentSessionGenerating}
               onView={setViewingImage}
             />
           )}
@@ -256,10 +267,12 @@ export function ImageWorkspace() {
                 size="icon"
                 disabled={task.isGenerating || !prompt.trim()}
                 className="h-9 w-9 shrink-0 rounded-lg mb-0.5"
-                title="Generate"
-                aria-label="Generate image"
+                title={isAnotherSessionGenerating ? 'Another image task is running' : 'Generate'}
+                aria-label={
+                  isAnotherSessionGenerating ? 'Another image task is running' : 'Generate image'
+                }
               >
-                {task.isGenerating ? (
+                {isCurrentSessionGenerating ? (
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Sparkles className="h-3.5 w-3.5" />
