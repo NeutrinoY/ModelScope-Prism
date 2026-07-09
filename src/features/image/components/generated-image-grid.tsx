@@ -53,17 +53,20 @@ export function GeneratedImageGrid({
             <img
               src={image.url}
               alt={image.prompt}
-              className="w-full h-auto block transition-transform duration-700 group-hover:scale-105"
+              className="w-full h-auto block transition-transform duration-[520ms] ease-[var(--motion-ease-standard)] group-hover:scale-[1.035]"
               loading="lazy"
             />
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 z-10">
-              <p className="text-white text-xs line-clamp-2 mb-3 font-medium">{image.prompt}</p>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-white/70 font-mono bg-white/10 px-2 py-0.5 rounded-full backdrop-blur-md">
-                  {image.modelId.split('/').pop()}
-                </span>
-                <Maximize2 className="h-4 w-4 text-white/70" />
+            <div className="absolute inset-0 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-[420ms] ease-[var(--motion-ease-standard)]">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/22 to-transparent" />
+              <div className="absolute inset-0 flex flex-col justify-end p-4">
+                <p className="text-white text-xs line-clamp-2 mb-3 font-medium">{image.prompt}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-white/70 font-mono bg-black/20 border border-white/12 px-2 py-0.5 rounded-full">
+                    {image.modelId.split('/').pop()}
+                  </span>
+                  <Maximize2 className="h-4 w-4 text-white/70" />
+                </div>
               </div>
             </div>
           </motion.div>
