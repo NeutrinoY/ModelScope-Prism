@@ -11,6 +11,7 @@ import type {
   ImageSession,
   ImageSessionSettings,
   PrismExportV1,
+  PrismSecrets,
   PrismSettings,
   Session,
   VisionSession,
@@ -42,7 +43,7 @@ const idbStorage: StateStorage = {
 
 type PrismState = {
   schemaVersion: typeof CURRENT_SCHEMA_VERSION;
-  apiKey: string;
+  secrets: PrismSecrets;
   settings: PrismSettings;
   sessions: Record<string, Session>;
   activeSessionByWorkspace: ActiveSessionByWorkspace;
@@ -84,6 +85,39 @@ function touchSession<T extends Session>(session: T): T {
   return { ...session, updatedAt: Date.now() };
 }
 
+function defaultPersistedState() {
+  const defaults = createDefaultStorage();
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    secrets: defaults.secrets,
+    settings: defaults.settings,
+    sessions: {},
+    activeSessionByWorkspace: defaults.activeSessionByWorkspace,
+    activeImageTask: null,
+  };
+}
+
+function normalizePersistedState(persisted: unknown) {
+  const candidate =
+    persisted && typeof persisted === 'object'
+      ? { schemaVersion: CURRENT_SCHEMA_VERSION, ...persisted }
+      : persisted;
+  const result = migrateStorage(candidate);
+
+  if (!result.ok) {
+    return defaultPersistedState();
+  }
+
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    secrets: result.data.secrets,
+    settings: result.data.settings,
+    sessions: result.data.sessions,
+    activeSessionByWorkspace: result.data.activeSessionByWorkspace,
+    activeImageTask: result.data.activeImageTask ?? null,
+  };
+}
+
 export const usePrismStore = create<PrismState>()(
   persist(
     (setState, getState) => {
@@ -91,15 +125,16 @@ export const usePrismStore = create<PrismState>()(
 
       return {
         schemaVersion: CURRENT_SCHEMA_VERSION,
-        apiKey: '',
+        secrets: defaults.secrets,
         settings: defaults.settings,
         sessions: {},
         activeSessionByWorkspace: defaults.activeSessionByWorkspace,
         activeImageTask: null,
         hasHydrated: false,
 
-        setApiKey: (apiKey) => setState({ apiKey: apiKey.trim() }),
-        clearApiKey: () => setState({ apiKey: '' }),
+        setApiKey: (apiKey) =>
+          setState((state) => ({ secrets: { ...state.secrets, apiKey: apiKey.trim() } })),
+        clearApiKey: () => setState((state) => ({ secrets: { ...state.secrets, apiKey: '' } })),
 
         setCurrentWorkspace: (workspace) =>
           setState((state) => ({
@@ -256,7 +291,7 @@ export const usePrismStore = create<PrismState>()(
             sessions: data.data.sessions,
             activeSessionByWorkspace: data.data.activeSessionByWorkspace,
             activeImageTask: null,
-            // apiKey is intentionally untouched: imports never carry tokens.
+            // secrets are intentionally untouched: imports never carry tokens.
           }),
 
         setHasHydrated: (value) => setState({ hasHydrated: value }),
@@ -268,39 +303,14 @@ export const usePrismStore = create<PrismState>()(
       version: CURRENT_SCHEMA_VERSION,
       partialize: (state) => ({
         schemaVersion: state.schemaVersion,
-        apiKey: state.apiKey,
+        secrets: state.secrets,
         settings: state.settings,
         sessions: state.sessions,
         activeSessionByWorkspace: state.activeSessionByWorkspace,
         activeImageTask: state.activeImageTask,
       }),
-      migrate: (persisted) => {
-        const result = migrateStorage(
-          persisted && typeof persisted === 'object'
-            ? { schemaVersion: CURRENT_SCHEMA_VERSION, ...persisted }
-            : persisted
-        );
-        if (!result.ok) {
-          const defaults = createDefaultStorage();
-          return {
-            schemaVersion: CURRENT_SCHEMA_VERSION,
-            apiKey: '',
-            settings: defaults.settings,
-            sessions: {},
-            activeSessionByWorkspace: defaults.activeSessionByWorkspace,
-            activeImageTask: null,
-          };
-        }
-        const persistedState = persisted as { apiKey?: string; activeImageTask?: ActiveImageTask };
-        return {
-          schemaVersion: CURRENT_SCHEMA_VERSION,
-          apiKey: persistedState.apiKey ?? result.data.secrets.apiKey ?? '',
-          settings: result.data.settings,
-          sessions: result.data.sessions,
-          activeSessionByWorkspace: result.data.activeSessionByWorkspace,
-          activeImageTask: persistedState.activeImageTask ?? result.data.activeImageTask ?? null,
-        };
-      },
+      migrate: normalizePersistedState,
+      merge: (persisted, current) => ({ ...current, ...normalizePersistedState(persisted) }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

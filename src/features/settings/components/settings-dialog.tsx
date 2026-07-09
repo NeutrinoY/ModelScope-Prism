@@ -32,7 +32,7 @@ export function SettingsDialog() {
   const open = useSettingsDialog((state) => state.open);
   const setOpen = useSettingsDialog((state) => state.setOpen);
 
-  const apiKey = usePrismStore((state) => state.apiKey);
+  const apiKey = usePrismStore((state) => state.secrets.apiKey ?? '');
   const settings = usePrismStore((state) => state.settings);
   const setApiKey = usePrismStore((state) => state.setApiKey);
   const updateSettings = usePrismStore((state) => state.updateSettings);

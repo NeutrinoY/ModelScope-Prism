@@ -41,7 +41,8 @@ export function useConversationRunner() {
   }, []);
 
   const send = useCallback(async (options: SendOptions) => {
-    const { apiKey, setSessionMessages } = usePrismStore.getState();
+    const { secrets, setSessionMessages } = usePrismStore.getState();
+    const apiKey = secrets.apiKey ?? '';
     if (!apiKey) {
       setError({ code: 'MISSING_API_KEY' });
       return;

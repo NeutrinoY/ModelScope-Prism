@@ -53,7 +53,8 @@ export function useImageTask() {
   useEffect(() => {
     if (!activeTask || phase !== 'polling') return;
 
-    const { apiKey } = usePrismStore.getState();
+    const { secrets } = usePrismStore.getState();
+    const apiKey = secrets.apiKey ?? '';
     if (!apiKey) {
       setError({ code: 'MISSING_API_KEY' });
       clearTask('failed');
@@ -139,7 +140,7 @@ export function useImageTask() {
 
   const submit = useCallback(async (request: ImageGenerationRequest, sessionId: string) => {
     const store = usePrismStore.getState();
-    const apiKey = store.apiKey;
+    const apiKey = store.secrets.apiKey ?? '';
     if (!apiKey) {
       setError({ code: 'MISSING_API_KEY' });
       return false;

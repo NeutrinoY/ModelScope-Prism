@@ -67,13 +67,16 @@ export type {
   WorkspaceType,
 } from './storage';
 export {
+  activeImageTaskSchema,
   activeSessionByWorkspaceSchema,
   chatSessionSchema,
   generatedImageSchema,
   imageGenerationDefaultsSchema,
   imageSessionSchema,
   prismExportV1Schema,
+  prismSecretsSchema,
   prismSettingsSchema,
+  prismStorageV1Schema,
   sessionSchema,
   visionSessionSchema,
   workspaceTypeSchema,

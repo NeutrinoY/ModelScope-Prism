@@ -167,6 +167,10 @@ export const imageGenerationDefaultsSchema = z.object({
   loras: loraRequestSchema,
 });
 
+export const prismSecretsSchema = z.object({
+  apiKey: z.string().optional(),
+});
+
 export const prismSettingsSchema = z.object({
   currentWorkspace: workspaceTypeSchema,
   modelDefaults: modelDefaultsSchema,
@@ -256,6 +260,23 @@ export const activeSessionByWorkspaceSchema = z.object({
   chat: z.string().nullable(),
   vision: z.string().nullable(),
   image: z.string().nullable(),
+});
+
+export const activeImageTaskSchema = z.object({
+  taskId: z.string().min(1),
+  sessionId: z.string().min(1),
+  modelId: z.string(),
+  prompt: z.string(),
+  startedAt: z.number(),
+});
+
+export const prismStorageV1Schema = z.object({
+  schemaVersion: z.literal(1),
+  secrets: prismSecretsSchema,
+  settings: prismSettingsSchema,
+  sessions: z.record(z.string(), sessionSchema),
+  activeSessionByWorkspace: activeSessionByWorkspaceSchema,
+  activeImageTask: activeImageTaskSchema.optional(),
 });
 
 export const prismExportV1Schema = z.object({
