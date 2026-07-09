@@ -58,6 +58,19 @@ export type ImageGenerateResponse = {
   requestId?: string;
 };
 
+export type ImageRequestMeta = {
+  modelId: string;
+  prompt: string;
+  negativePrompt?: string;
+  size?: string;
+  seed?: number;
+  steps?: number;
+  guidance?: number;
+  imageInputCount?: number;
+  loras?: LoraItem[];
+  createdAt: number;
+};
+
 export type ImageTaskStatus =
   | {
       status: 'pending' | 'running';
@@ -80,6 +93,7 @@ export type ActiveImageTask = {
   modelId: string;
   prompt: string;
   startedAt: number;
+  requestMeta?: ImageRequestMeta;
 };
 
 // ---------------------------------------------------------------------------

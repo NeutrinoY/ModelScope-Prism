@@ -9,6 +9,7 @@ import {
 } from './conversation';
 import {
   type ActiveImageTask,
+  type ImageRequestMeta,
   type LoraRequest,
   loraRequestSchema,
   type OptionalParam,
@@ -77,19 +78,6 @@ export type VisionSession = SessionBase & {
   type: 'vision';
   messages: ConversationMessage[];
   settings: ConversationSessionSettings;
-};
-
-export type ImageRequestMeta = {
-  modelId: string;
-  prompt: string;
-  negativePrompt?: string;
-  size?: string;
-  seed?: number;
-  steps?: number;
-  guidance?: number;
-  imageInputCount?: number;
-  loras?: { modelId: string; weight: number }[];
-  createdAt: number;
 };
 
 export type GeneratedImage = {
@@ -220,6 +208,19 @@ export const visionSessionSchema = z.object({
   settings: conversationSessionSettingsSchema,
 });
 
+export const imageRequestMetaSchema = z.object({
+  modelId: z.string(),
+  prompt: z.string(),
+  negativePrompt: z.string().optional(),
+  size: z.string().optional(),
+  seed: z.number().optional(),
+  steps: z.number().optional(),
+  guidance: z.number().optional(),
+  imageInputCount: z.number().optional(),
+  loras: z.array(z.object({ modelId: z.string(), weight: z.number() })).optional(),
+  createdAt: z.number(),
+});
+
 export const generatedImageSchema = z.object({
   id: z.string().min(1),
   url: z.string().min(1),
@@ -227,20 +228,7 @@ export const generatedImageSchema = z.object({
   modelId: z.string(),
   createdAt: z.number(),
   size: z.string().optional(),
-  requestMeta: z
-    .object({
-      modelId: z.string(),
-      prompt: z.string(),
-      negativePrompt: z.string().optional(),
-      size: z.string().optional(),
-      seed: z.number().optional(),
-      steps: z.number().optional(),
-      guidance: z.number().optional(),
-      imageInputCount: z.number().optional(),
-      loras: z.array(z.object({ modelId: z.string(), weight: z.number() })).optional(),
-      createdAt: z.number(),
-    })
-    .optional(),
+  requestMeta: imageRequestMetaSchema.optional(),
 });
 
 export const imageSessionSchema = z.object({
@@ -268,6 +256,7 @@ export const activeImageTaskSchema = z.object({
   modelId: z.string(),
   prompt: z.string(),
   startedAt: z.number(),
+  requestMeta: imageRequestMetaSchema.optional(),
 });
 
 export const prismStorageV1Schema = z.object({
