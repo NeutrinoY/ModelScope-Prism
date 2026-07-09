@@ -18,7 +18,7 @@ export function TopBar() {
   const activeSession = usePrismStore((state) => selectActiveSession(state, currentWorkspace));
   const setSessionModelId = usePrismStore((state) => state.setSessionModelId);
   const updateSettings = usePrismStore((state) => state.updateSettings);
-  const hasApiKey = usePrismStore((state) => Boolean(state.apiKey));
+  const hasApiKey = usePrismStore((state) => Boolean(state.secrets.apiKey));
 
   const labels = {
     chat: 'LLM Model ID',

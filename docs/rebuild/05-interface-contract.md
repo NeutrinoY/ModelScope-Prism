@@ -559,9 +559,10 @@ type ImageTaskStatus =
 type ActiveImageTask = {
   taskId: string;
   sessionId: string;
-  model: string;
+  modelId: string;
   prompt: string;
   startedAt: number;
+  requestMeta?: ImageRequestMeta;
 };
 ```
 

@@ -3,7 +3,8 @@
  * Prism probe — offline model capability diagnostics.
  *
  * Usage:
- *   node scripts/probe/cli.mjs <model-id> [more-model-ids…] [--no-image] [--no-output] [--json out.json]
+ *   node scripts/probe/cli.mjs <model-id> [more-model-ids…] [--no-image] [--no-output]
+ *     [--delay-ms 1500] [--rate-limit-delay-ms 10000] [--json out.json]
  *
  * Requires MS_API_KEY in the environment (or .env.local).
  * This tool is for maintaining built-in profiles; it never runs in the
@@ -31,15 +32,42 @@ function loadDotEnvLocal() {
 
 function parseArgs(argv) {
   const models = [];
-  const options = { includeImage: true, includeOutputLimit: true, jsonPath: null };
+  const options = {
+    includeImage: true,
+    includeOutputLimit: true,
+    jsonPath: null,
+    delayMs: 1500,
+    rateLimitDelayMs: 10_000,
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--no-image') options.includeImage = false;
     else if (arg === '--no-output') options.includeOutputLimit = false;
-    else if (arg === '--json') options.jsonPath = argv[++i];
+    else if (arg === '--delay-ms') options.delayMs = parseDelay(argv[++i], options.delayMs);
+    else if (arg === '--rate-limit-delay-ms') {
+      options.rateLimitDelayMs = parseDelay(argv[++i], options.rateLimitDelayMs);
+    } else if (arg === '--json') options.jsonPath = argv[++i];
     else if (!arg.startsWith('--')) models.push(arg);
   }
   return { models, options };
+}
+
+function parseDelay(raw, fallback) {
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0 || value > 300_000) return fallback;
+  return Math.trunc(value);
+}
+
+function sleep(ms) {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function cooldownMs(outcome, options) {
+  if (outcome.error?.kind === 'rate_limited') {
+    return Math.max(outcome.error.retryAfterMs ?? 0, options.rateLimitDelayMs);
+  }
+  return options.delayMs;
 }
 
 function formatCaseLine(caseResult) {
@@ -57,7 +85,7 @@ async function main() {
 
   if (models.length === 0) {
     console.log(
-      'Usage: node scripts/probe/cli.mjs <model-id> [...] [--no-image] [--no-output] [--json out.json]'
+      'Usage: node scripts/probe/cli.mjs <model-id> [...] [--no-image] [--no-output] [--delay-ms 1500] [--json out.json]'
     );
     process.exit(1);
   }
@@ -70,11 +98,18 @@ async function main() {
     const cases = buildProbeCases(model, options);
     const results = [];
 
-    for (const probeCase of cases) {
+    for (let index = 0; index < cases.length; index++) {
+      const probeCase = cases[index];
       process.stdout.write(`  ${probeCase.id} … `);
       const outcome = await probeChatCompletion({ apiKey, payload: probeCase.payload });
       results.push({ ...probeCase, ...outcome });
       console.log(outcome.ok ? `ok (${outcome.durationMs}ms)` : `fail (${outcome.error?.kind})`);
+
+      const waitMs = cooldownMs(outcome, options);
+      if (index < cases.length - 1 && waitMs > 0) {
+        console.log(`    cooldown ${waitMs}ms`);
+        await sleep(waitMs);
+      }
     }
 
     const report = buildReport(model, results);

@@ -53,7 +53,8 @@ export function useImageTask() {
   useEffect(() => {
     if (!activeTask || phase !== 'polling') return;
 
-    const { apiKey } = usePrismStore.getState();
+    const { secrets } = usePrismStore.getState();
+    const apiKey = secrets.apiKey ?? '';
     if (!apiKey) {
       setError({ code: 'MISSING_API_KEY' });
       clearTask('failed');
@@ -65,7 +66,7 @@ export function useImageTask() {
 
     const finishWithImages = (urls: string[]) => {
       const store = usePrismStore.getState();
-      const meta = requestMetaRef.current;
+      const meta = activeTask.requestMeta ?? requestMetaRef.current;
       for (const url of urls) {
         const image: GeneratedImage = {
           id: crypto.randomUUID(),
@@ -139,7 +140,7 @@ export function useImageTask() {
 
   const submit = useCallback(async (request: ImageGenerationRequest, sessionId: string) => {
     const store = usePrismStore.getState();
-    const apiKey = store.apiKey;
+    const apiKey = store.secrets.apiKey ?? '';
     if (!apiKey) {
       setError({ code: 'MISSING_API_KEY' });
       return false;
@@ -170,6 +171,7 @@ export function useImageTask() {
         modelId: request.model,
         prompt: request.prompt,
         startedAt: Date.now(),
+        requestMeta: meta,
       };
       store.setActiveImageTask(task);
       setPhase('polling');

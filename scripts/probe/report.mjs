@@ -16,6 +16,20 @@ function reasoningDisabled(result) {
   return Boolean(result?.ok && (!result.reasoning || result.reasoning.trim().length === 0));
 }
 
+function isConclusiveFailure(result) {
+  return Boolean(
+    result &&
+      !result.ok &&
+      ['rejected', 'model_unavailable'].includes(result.error?.kind ?? 'unknown')
+  );
+}
+
+function capabilityFromCase(result) {
+  if (!result) return 'unknown';
+  if (result.ok) return true;
+  return isConclusiveFailure(result) ? false : 'unknown';
+}
+
 /** Determine which thinking format can enable and disable reasoning. */
 export function deriveThinkingProfile(results) {
   const baseline = outcome(results, 'baseline');
@@ -35,17 +49,38 @@ export function deriveThinkingProfile(results) {
     { format: 'thinking.type', on: 'thinking:thinking.type:on', off: 'thinking:thinking.type:off' },
   ];
 
-  for (const candidate of formats) {
+  const observations = formats.map((candidate) => {
     const onResult = outcome(results, candidate.on);
     const offResult = outcome(results, candidate.off);
-    const canEnable = hasReasoning(onResult);
-    const canDisable = reasoningDisabled(offResult);
+    return {
+      format: candidate.format,
+      canEnable: hasReasoning(onResult),
+      canDisable: reasoningDisabled(offResult),
+    };
+  });
 
-    if (canEnable || (observedByDefault && canDisable)) {
+  const fullControl = observations.find((candidate) => candidate.canEnable && candidate.canDisable);
+  if (fullControl) {
+    return {
+      ...fullControl,
+      observedByDefault,
+    };
+  }
+
+  for (const candidate of observations) {
+    if (candidate.canDisable) {
       return {
-        format: candidate.format,
-        canEnable,
-        canDisable,
+        ...candidate,
+        observedByDefault,
+      };
+    }
+  }
+
+  if (!observedByDefault) {
+    const enablingCandidate = observations.find((candidate) => candidate.canEnable);
+    if (enablingCandidate) {
+      return {
+        ...enablingCandidate,
         observedByDefault,
       };
     }
@@ -68,8 +103,8 @@ export function deriveInputProfile(results) {
   const dataUrl = outcome(results, 'input:image_url:data');
   return {
     text: Boolean(outcome(results, 'baseline')?.ok),
-    imageUrl: remote ? remote.ok === true : 'unknown',
-    imageDataUrl: dataUrl ? dataUrl.ok === true : 'unknown',
+    imageUrl: capabilityFromCase(remote),
+    imageDataUrl: capabilityFromCase(dataUrl),
   };
 }
 
@@ -78,7 +113,9 @@ export function deriveOutputProfile(results) {
   const maxCompletion = outcome(results, 'output:max_completion_tokens');
   if (maxTokens?.ok) return { param: 'max_tokens' };
   if (maxCompletion?.ok) return { param: 'max_completion_tokens' };
-  if (maxTokens || maxCompletion) return { param: 'none' };
+  if (isConclusiveFailure(maxTokens) && isConclusiveFailure(maxCompletion)) {
+    return { param: 'none' };
+  }
   return { param: 'unknown' };
 }
 

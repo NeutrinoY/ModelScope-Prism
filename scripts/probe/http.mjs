@@ -39,7 +39,11 @@ export async function probeChatCompletion({ apiKey, payload, timeoutMs = 60_000 
       return {
         ok: false,
         status: response.status,
-        error: summarizeUpstreamError(response.status, bodyText),
+        error: summarizeUpstreamError(
+          response.status,
+          bodyText,
+          response.headers.get('retry-after')
+        ),
         durationMs: Date.now() - startedAt,
       };
     }
@@ -105,7 +109,20 @@ async function collectSseStream(response) {
   return { content, reasoning };
 }
 
-function summarizeUpstreamError(status, bodyText) {
+function retryAfterMs(headerValue) {
+  if (!headerValue) return null;
+  const seconds = Number(headerValue);
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return Math.ceil(seconds * 1000);
+  }
+  const dateMs = Date.parse(headerValue);
+  if (Number.isFinite(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+  return null;
+}
+
+function summarizeUpstreamError(status, bodyText, retryAfterHeader) {
   let message = bodyText.slice(0, 300);
   try {
     const parsed = JSON.parse(bodyText);
@@ -121,5 +138,8 @@ function summarizeUpstreamError(status, bodyText) {
   else if (status === 404) kind = 'model_unavailable';
   else if (status === 400 || status === 422) kind = 'rejected';
 
-  return { kind, status, message };
+  const error = { kind, status, message };
+  const retryAfter = retryAfterMs(retryAfterHeader);
+  if (retryAfter !== null) error.retryAfterMs = retryAfter;
+  return error;
 }

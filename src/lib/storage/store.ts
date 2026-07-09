@@ -11,6 +11,7 @@ import type {
   ImageSession,
   ImageSessionSettings,
   PrismExportV1,
+  PrismSecrets,
   PrismSettings,
   Session,
   VisionSession,
@@ -42,7 +43,7 @@ const idbStorage: StateStorage = {
 
 type PrismState = {
   schemaVersion: typeof CURRENT_SCHEMA_VERSION;
-  apiKey: string;
+  secrets: PrismSecrets;
   settings: PrismSettings;
   sessions: Record<string, Session>;
   activeSessionByWorkspace: ActiveSessionByWorkspace;
@@ -91,15 +92,16 @@ export const usePrismStore = create<PrismState>()(
 
       return {
         schemaVersion: CURRENT_SCHEMA_VERSION,
-        apiKey: '',
+        secrets: defaults.secrets,
         settings: defaults.settings,
         sessions: {},
         activeSessionByWorkspace: defaults.activeSessionByWorkspace,
         activeImageTask: null,
         hasHydrated: false,
 
-        setApiKey: (apiKey) => setState({ apiKey: apiKey.trim() }),
-        clearApiKey: () => setState({ apiKey: '' }),
+        setApiKey: (apiKey) =>
+          setState((state) => ({ secrets: { ...state.secrets, apiKey: apiKey.trim() } })),
+        clearApiKey: () => setState((state) => ({ secrets: { ...state.secrets, apiKey: '' } })),
 
         setCurrentWorkspace: (workspace) =>
           setState((state) => ({
@@ -256,7 +258,7 @@ export const usePrismStore = create<PrismState>()(
             sessions: data.data.sessions,
             activeSessionByWorkspace: data.data.activeSessionByWorkspace,
             activeImageTask: null,
-            // apiKey is intentionally untouched: imports never carry tokens.
+            // secrets are intentionally untouched: imports never carry tokens.
           }),
 
         setHasHydrated: (value) => setState({ hasHydrated: value }),
@@ -268,7 +270,7 @@ export const usePrismStore = create<PrismState>()(
       version: CURRENT_SCHEMA_VERSION,
       partialize: (state) => ({
         schemaVersion: state.schemaVersion,
-        apiKey: state.apiKey,
+        secrets: state.secrets,
         settings: state.settings,
         sessions: state.sessions,
         activeSessionByWorkspace: state.activeSessionByWorkspace,
@@ -284,17 +286,21 @@ export const usePrismStore = create<PrismState>()(
           const defaults = createDefaultStorage();
           return {
             schemaVersion: CURRENT_SCHEMA_VERSION,
-            apiKey: '',
+            secrets: defaults.secrets,
             settings: defaults.settings,
             sessions: {},
             activeSessionByWorkspace: defaults.activeSessionByWorkspace,
             activeImageTask: null,
           };
         }
-        const persistedState = persisted as { apiKey?: string; activeImageTask?: ActiveImageTask };
+        const persistedState = persisted as {
+          apiKey?: string;
+          activeImageTask?: ActiveImageTask;
+        };
+        const apiKey = result.data.secrets.apiKey ?? persistedState.apiKey ?? '';
         return {
           schemaVersion: CURRENT_SCHEMA_VERSION,
-          apiKey: persistedState.apiKey ?? result.data.secrets.apiKey ?? '',
+          secrets: { ...result.data.secrets, apiKey },
           settings: result.data.settings,
           sessions: result.data.sessions,
           activeSessionByWorkspace: result.data.activeSessionByWorkspace,

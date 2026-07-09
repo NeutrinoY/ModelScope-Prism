@@ -361,6 +361,7 @@ type ActiveImageTask = {
   modelId: string;
   prompt: string;
   startedAt: number;
+  requestMeta?: ImageRequestMeta;
 };
 ```
 
@@ -371,6 +372,7 @@ activeImageTask 用于刷新后尽可能恢复未完成任务
 activeImageTask 不属于永久历史
 导出默认不包含 activeImageTask
 任务超过超时窗口后应清理
+requestMeta 可用于刷新后恢复任务成功时的生成记录参数信息
 ```
 
 ## Draft 状态

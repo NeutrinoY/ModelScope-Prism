@@ -13,6 +13,7 @@ import type {
   ThinkingRequestControl,
 } from '@/lib/contracts';
 import { popEntrance } from '@/lib/config/motion';
+import { allowsImageInput, getModelProfile } from '@/lib/domain';
 import { cn } from '@/lib/utils';
 
 /**
@@ -58,6 +59,16 @@ export function ConversationComposer({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const advancedRef = useRef<HTMLDivElement>(null);
+  const imageInput = allowsImageInput(getModelProfile(modelId));
+  const imageInputDisabled = !imageInput.remoteUrl && !imageInput.dataUrl;
+  const hasUnsupportedImages = images.some((image) => {
+    if (image.source === 'remote_url') return !imageInput.remoteUrl;
+    return !imageInput.dataUrl;
+  });
+  const imageDisabledReason = 'Image input is not available for this model.';
+  const resolvedImageHint = hasUnsupportedImages
+    ? 'Remove images that are not supported by the current model before sending.'
+    : imageHint;
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -76,7 +87,8 @@ export function ConversationComposer({
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [advancedOpen]);
 
-  const canSubmit = (text.trim().length > 0 || images.length > 0) && !isStreaming;
+  const canSubmit =
+    (text.trim().length > 0 || images.length > 0) && !isStreaming && !hasUnsupportedImages;
 
   const handleSubmit = (event?: React.FormEvent) => {
     event?.preventDefault();
@@ -98,7 +110,11 @@ export function ConversationComposer({
             onChange={setImages}
             label={imageLabel}
             placeholder="Paste image URL…"
-            hint={imageHint}
+            hint={resolvedImageHint}
+            disabled={imageInputDisabled}
+            disabledReason={imageDisabledReason}
+            allowRemoteUrl={imageInput.remoteUrl}
+            allowDataUrl={imageInput.dataUrl}
             {...(maxImages !== undefined ? { maxImages } : {})}
           />
 

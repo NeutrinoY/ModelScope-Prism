@@ -74,12 +74,26 @@ export type ImageTaskStatus =
       error?: PrismError;
     };
 
+export type ImageRequestMeta = {
+  modelId: string;
+  prompt: string;
+  negativePrompt?: string;
+  size?: string;
+  seed?: number;
+  steps?: number;
+  guidance?: number;
+  imageInputCount?: number;
+  loras?: LoraItem[];
+  createdAt: number;
+};
+
 export type ActiveImageTask = {
   taskId: string;
   sessionId: string;
   modelId: string;
   prompt: string;
   startedAt: number;
+  requestMeta?: ImageRequestMeta;
 };
 
 // ---------------------------------------------------------------------------
