@@ -44,8 +44,9 @@ export function VisionWorkspace() {
           workspace.error && (
             <ErrorNotice
               error={workspace.error}
+              isRetrying={workspace.isStreaming}
               onOpenSettings={openSettingsDialog}
-              onRetry={workspace.clearError}
+              onRetry={workspace.retry}
             />
           )
         }

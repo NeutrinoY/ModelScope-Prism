@@ -89,6 +89,24 @@ export function useConversationWorkspace(workspace: 'chat' | 'vision') {
     [workspace, modelId, runner.send]
   );
 
+  const retry = useCallback(() => {
+    if (!session || runner.isStreaming) return;
+
+    let nextMessages = session.messages;
+    if (nextMessages.length > 0 && nextMessages[nextMessages.length - 1].role === 'assistant') {
+      nextMessages = nextMessages.slice(0, -1);
+      usePrismStore.getState().setSessionMessages(session.id, nextMessages);
+    }
+
+    void runner.send({
+      sessionId: session.id,
+      modelId: session.modelId,
+      messages: nextMessages,
+      settings: session.settings,
+      preserveError: true,
+    });
+  }, [session, runner.isStreaming, runner.send]);
+
   return {
     session,
     modelId,
@@ -97,6 +115,7 @@ export function useConversationWorkspace(workspace: 'chat' | 'vision') {
     setModelId,
     updateSettings,
     submit,
+    retry,
     isStreaming: runner.isStreaming,
     error: runner.error,
     stop: runner.stop,

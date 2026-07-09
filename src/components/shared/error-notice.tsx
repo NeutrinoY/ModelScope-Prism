@@ -18,10 +18,12 @@ export type WorkspaceError = {
  */
 export function ErrorNotice({
   error,
+  isRetrying = false,
   onRetry,
   onOpenSettings,
 }: {
   error: WorkspaceError;
+  isRetrying?: boolean;
   onRetry?: () => void;
   onOpenSettings?: () => void;
 }) {
@@ -40,6 +42,7 @@ export function ErrorNotice({
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs gap-1.5"
+                disabled={isRetrying}
                 onClick={onOpenSettings}
               >
                 <KeyRound className="h-3 w-3" />
@@ -47,9 +50,15 @@ export function ErrorNotice({
               </Button>
             )}
             {!isTokenIssue && onRetry && (
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={onRetry}>
-                <RefreshCw className="h-3 w-3" />
-                Retry
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                disabled={isRetrying}
+                onClick={onRetry}
+              >
+                <RefreshCw className={isRetrying ? 'h-3 w-3 animate-spin' : 'h-3 w-3'} />
+                {isRetrying ? 'Retrying...' : 'Retry'}
               </Button>
             )}
           </div>

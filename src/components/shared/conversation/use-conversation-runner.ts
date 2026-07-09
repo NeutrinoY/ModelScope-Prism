@@ -27,6 +27,7 @@ export type SendOptions = {
   modelId: string;
   messages: ConversationMessage[];
   settings: ConversationSessionSettings;
+  preserveError?: boolean;
 };
 
 export function useConversationRunner() {
@@ -48,7 +49,9 @@ export function useConversationRunner() {
       return;
     }
 
-    setError(null);
+    if (!options.preserveError) {
+      setError(null);
+    }
     setIsStreaming(true);
 
     const controller = new AbortController();
@@ -88,6 +91,13 @@ export function useConversationRunner() {
 
     let content = '';
     let reasoning = '';
+    let clearedPreservedError = false;
+
+    const clearPreservedError = () => {
+      if (!options.preserveError || clearedPreservedError) return;
+      clearedPreservedError = true;
+      setError(null);
+    };
 
     const commit = () => {
       const assistant: TextConversationMessage = {
@@ -110,6 +120,7 @@ export function useConversationRunner() {
         apiKey,
         {
           onDelta: (delta) => {
+            if (delta.c || delta.r) clearPreservedError();
             if (delta.c) content += delta.c;
             if (delta.r) reasoning += delta.r;
             commit();
@@ -122,6 +133,7 @@ export function useConversationRunner() {
       if (!content && !reasoning) {
         commit();
       }
+      setError(null);
     } catch (caught) {
       if (caught instanceof Error && caught.name === 'AbortError') {
         // User pressed stop: keep whatever streamed so far.
